@@ -1,0 +1,36 @@
+name: cyber_vpn
+description: Cyber VPN — mobile-first VPN (current OpenVPN servers, axevpn_flutter).
+publish_to: "none"
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.12.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+  auto_route: ^10.1.2
+  axevpn_flutter: ^2.0.0
+  cached_network_image: ^3.4.1
+  flutter_bloc: ^9.1.1
+  freezed_annotation: ^3.1.0
+  get_it: ^9.2.0
+  google_fonts: ^6.2.1
+  json_annotation: ^4.11.0
+  shared_preferences: ^2.5.3
+  supabase_flutter: ^2.10.0
+  url_launcher: ^6.3.2
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  auto_route_generator: ^10.1.2
+  build_runner: ^2.4.15
+  flutter_lints: ^6.0.0
+  freezed: ^3.2.0
+  json_serializable: ^6.9.0
+
+flutter:
+  uses-material-design: true
+  config:
+    enable-swift-package-manager: false

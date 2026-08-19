@@ -1,0 +1,64 @@
+# Architecture — Cyber VPN
+
+Keep this small. Prefer extending existing features over new packages.
+
+## Layout
+
+```
+lib/
+  main.dart                 # Flutter + Supabase + configureDependencies()
+  app/
+    app.dart                # MaterialApp.router + BlocProviders
+    di.dart                 # GetIt registrations
+    router.dart             # @AutoRouterConfig
+    router.gr.dart          # generated
+  core/
+    config/app_config.dart
+    json.dart               # jsonInt / jsonString / jsonBool helpers
+    theme/
+    widgets/                # ClButton, ConnectRing, ThreatBanner
+  features/
+    onboarding/presentation/pages/
+    session/
+      domain/repositories/tunnel_repository.dart
+      data/axe_vpn_tunnel_repository.dart
+      presentation/bloc/    # session_bloc + event/state (Freezed parts)
+      presentation/pages/home_page.dart
+    locations/
+      domain/entities/vpn_location.dart
+      domain/repositories/locations_repository.dart
+      data/supabase_locations_repository.dart
+      presentation/
+    settings/               # ThemeCubit; paywall page currently lives here (move to subscription/)
+```
+
+Add **`features/subscription/`** and **`features/minutes/`** as new vertical slices (plan). Do not put RevenueCat or AdMob in `HomePage`.
+
+## Rules
+
+- Pages dispatch events and render states. No `Supabase.instance` or `OpenVPN` in widgets.
+- Register new repos as `LazySingleton` in `di.dart`; Blocs as `Factory`; provide Blocs with `BlocProvider` in `app.dart`.
+- Session is the only tunnel source of truth (`SessionBloc`). Locations listen; they do not keep a second `vpnInfo`.
+- Cache-first locations: memory → SharedPreferences → network. Refresh on connect **timeout** once (`didRefreshOnFailure`).
+- iOS tunnel ids must stay in sync with `AppConfig.iosAppGroup` and `iosVpnExtensionBundleId`.
+
+## Codegen
+
+| Annotation | Output |
+|------------|--------|
+| `@freezed` | `*.freezed.dart` |
+| `@JsonSerializable` via Freezed | `vpn_location.g.dart` |
+| `@RoutePage` / `AppRouter` | `router.gr.dart` |
+
+Do not hand-edit generated files.
+
+## Stack (current)
+
+`flutter_bloc`, `freezed`, `get_it`, `auto_route`, `axevpn_flutter` ^2, `supabase_flutter`, `shared_preferences`, `google_fonts`, `cached_network_image`, `url_launcher`.
+
+Swift Package Manager is **disabled** in `pubspec.yaml` because `axevpn_flutter` does not support it.
+
+## Native
+
+- Android: `MainActivity` calls `AxeVPNFlutterPlugin.connectWhileGranted` for requestCode 24.
+- iOS: target `VPNExtension` + `ios/VPNExtension/PacketTunnelProvider.swift` + OpenVPNAdapter in `Podfile`.

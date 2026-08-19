@@ -1,0 +1,20 @@
+part of 'session_bloc.dart';
+
+@freezed
+sealed class SessionEvent with _$SessionEvent {
+  const factory SessionEvent.started({
+    @Default([]) List<VpnLocation> locations,
+    VpnCredentials? credentials,
+  }) = SessionStarted;
+  const factory SessionEvent.connectPressed() = SessionConnectPressed;
+  const factory SessionEvent.disconnectPressed() = SessionDisconnectPressed;
+  const factory SessionEvent.serverChosen(VpnLocation location) =
+      SessionServerChosen;
+  const factory SessionEvent.stageUpdated(String stage) = SessionStageUpdated;
+  const factory SessionEvent.statusUpdated({
+    required String duration,
+    required String byteIn,
+    required String byteOut,
+  }) = SessionStatusUpdated;
+  const factory SessionEvent.connectTimedOut() = SessionConnectTimedOut;
+}
