@@ -12,6 +12,7 @@ dependencies:
   auto_route: ^10.1.2
   axevpn_flutter: ^2.0.0
   cached_network_image: ^3.4.1
+  connectivity_plus: ^7.0.0
   flutter_bloc: ^9.1.1
   freezed_annotation: ^3.1.0
   get_it: ^9.2.0

@@ -20,6 +20,7 @@ lib/
   features/
     onboarding/presentation/pages/
     session/
+      domain/open_vpn_kill_switch.dart
       domain/repositories/tunnel_repository.dart
       data/axe_vpn_tunnel_repository.dart
       presentation/bloc/    # session_bloc + event/state (Freezed parts)
@@ -39,6 +40,8 @@ Add **`features/subscription/`** and **`features/minutes/`** as new vertical sli
 - Pages dispatch events and render states. No `Supabase.instance` or `OpenVPN` in widgets.
 - Register new repos as `LazySingleton` in `di.dart`; Blocs as `Factory`; provide Blocs with `BlocProvider` in `app.dart`.
 - Session is the only tunnel source of truth (`SessionBloc`). Locations listen; they do not keep a second `vpnInfo`.
+- Home must start the session from the **current** `LocationsBloc` state (splash often finishes fetch before Home mounts).
+- Kill switch + reconnect live in `SessionBloc` (`_intended`, backoff). Settings only dispatches events. Do not call `OpenVPN` from Settings.
 - Cache-first locations: memory → SharedPreferences → network. Refresh on connect **timeout** once (`didRefreshOnFailure`).
 - iOS tunnel ids must stay in sync with `AppConfig.iosAppGroup` and `iosVpnExtensionBundleId`.
 
@@ -54,11 +57,12 @@ Do not hand-edit generated files.
 
 ## Stack (current)
 
-`flutter_bloc`, `freezed`, `get_it`, `auto_route`, `axevpn_flutter` ^2, `supabase_flutter`, `shared_preferences`, `google_fonts`, `cached_network_image`, `url_launcher`.
+`flutter_bloc`, `freezed`, `get_it`, `auto_route`, `axevpn_flutter` ^2, `supabase_flutter`, `shared_preferences`, `connectivity_plus`, `google_fonts`, `cached_network_image`, `url_launcher`.
 
 Swift Package Manager is **disabled** in `pubspec.yaml` because `axevpn_flutter` does not support it.
 
 ## Native
 
-- Android: `MainActivity` calls `AxeVPNFlutterPlugin.connectWhileGranted` for requestCode 24.
-- iOS: target `VPNExtension` + `ios/VPNExtension/PacketTunnelProvider.swift` + OpenVPNAdapter in `Podfile`.
+- Android: `MainActivity` calls `AxeVPNFlutterPlugin.connectWhileGranted` for requestCode 24. MethodChannel `com.cybervpn.cyber_vpn/device` → VPN settings (`ACTION_VPN_SETTINGS`, then wireless/settings fallback). Manifest `<queries>` must include `android.settings.VPN_SETTINGS` (API 30+). `OpenVPNService` must declare `android.net.VpnService`. Duplicate `libwg-go.so`: app `packaging.jniLibs.pickFirsts`.
+- iOS: target `VPNExtension` + `ios/VPNExtension/PacketTunnelProvider.swift` (`tunPersist`, reconnect on Wi‑Fi or WWAN) + OpenVPNAdapter in `Podfile`.
+- Kill switch: `OpenVpnKillSwitch.apply` on connect. Hard device block = Android Always-on + “Block connections without VPN.” MethodChannel must return a **bool** (`true`), not `null`/`void`, or Dart treats success as failure. Always-on overrides in-app disconnect until the user turns Always-on off.

@@ -15,6 +15,9 @@ class AppConfig {
   static const prefsSelectedServerId = 'selected_server_id';
   static const prefsCachedConfig = 'cached_vpn_config';
   static const prefsCachedServers = 'cached_vpn_servers';
+  static const prefsKillSwitch = 'kill_switch';
+
+  static const deviceSettingsChannel = 'com.cybervpn.cyber_vpn/device';
 
   /// iOS App Group + Packet Tunnel identifiers (must match Xcode).
   static const iosAppGroup = 'group.com.cybervpn.cyberVpn';

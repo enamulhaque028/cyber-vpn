@@ -13,6 +13,8 @@ abstract class SessionState with _$SessionState {
     @Default('00:00:00') String duration,
     String? message,
     @Default(false) bool didRefreshOnFailure,
+    @Default(true) bool killSwitchEnabled,
+    @Default(false) bool reconnecting,
   }) = _SessionState;
 
   bool get isProtected => phase == SessionPhase.protected;

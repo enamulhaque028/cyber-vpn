@@ -55,7 +55,7 @@ extension SessionEventPatterns on SessionEvent {
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeMap<TResult extends Object?>({TResult Function( SessionStarted value)?  started,TResult Function( SessionConnectPressed value)?  connectPressed,TResult Function( SessionDisconnectPressed value)?  disconnectPressed,TResult Function( SessionServerChosen value)?  serverChosen,TResult Function( SessionStageUpdated value)?  stageUpdated,TResult Function( SessionStatusUpdated value)?  statusUpdated,TResult Function( SessionConnectTimedOut value)?  connectTimedOut,required TResult orElse(),}){
+@optionalTypeArgs TResult maybeMap<TResult extends Object?>({TResult Function( SessionStarted value)?  started,TResult Function( SessionConnectPressed value)?  connectPressed,TResult Function( SessionDisconnectPressed value)?  disconnectPressed,TResult Function( SessionServerChosen value)?  serverChosen,TResult Function( SessionStageUpdated value)?  stageUpdated,TResult Function( SessionStatusUpdated value)?  statusUpdated,TResult Function( SessionConnectTimedOut value)?  connectTimedOut,TResult Function( SessionKillSwitchChanged value)?  killSwitchChanged,TResult Function( SessionNetworkPathChanged value)?  networkPathChanged,TResult Function( SessionOpenSystemVpnSettings value)?  openSystemVpnSettings,required TResult orElse(),}){
 final _that = this;
 switch (_that) {
 case SessionStarted() when started != null:
@@ -65,7 +65,10 @@ return disconnectPressed(_that);case SessionServerChosen() when serverChosen != 
 return serverChosen(_that);case SessionStageUpdated() when stageUpdated != null:
 return stageUpdated(_that);case SessionStatusUpdated() when statusUpdated != null:
 return statusUpdated(_that);case SessionConnectTimedOut() when connectTimedOut != null:
-return connectTimedOut(_that);case _:
+return connectTimedOut(_that);case SessionKillSwitchChanged() when killSwitchChanged != null:
+return killSwitchChanged(_that);case SessionNetworkPathChanged() when networkPathChanged != null:
+return networkPathChanged(_that);case SessionOpenSystemVpnSettings() when openSystemVpnSettings != null:
+return openSystemVpnSettings(_that);case _:
   return orElse();
 
 }
@@ -83,7 +86,7 @@ return connectTimedOut(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult map<TResult extends Object?>({required TResult Function( SessionStarted value)  started,required TResult Function( SessionConnectPressed value)  connectPressed,required TResult Function( SessionDisconnectPressed value)  disconnectPressed,required TResult Function( SessionServerChosen value)  serverChosen,required TResult Function( SessionStageUpdated value)  stageUpdated,required TResult Function( SessionStatusUpdated value)  statusUpdated,required TResult Function( SessionConnectTimedOut value)  connectTimedOut,}){
+@optionalTypeArgs TResult map<TResult extends Object?>({required TResult Function( SessionStarted value)  started,required TResult Function( SessionConnectPressed value)  connectPressed,required TResult Function( SessionDisconnectPressed value)  disconnectPressed,required TResult Function( SessionServerChosen value)  serverChosen,required TResult Function( SessionStageUpdated value)  stageUpdated,required TResult Function( SessionStatusUpdated value)  statusUpdated,required TResult Function( SessionConnectTimedOut value)  connectTimedOut,required TResult Function( SessionKillSwitchChanged value)  killSwitchChanged,required TResult Function( SessionNetworkPathChanged value)  networkPathChanged,required TResult Function( SessionOpenSystemVpnSettings value)  openSystemVpnSettings,}){
 final _that = this;
 switch (_that) {
 case SessionStarted():
@@ -93,7 +96,10 @@ return disconnectPressed(_that);case SessionServerChosen():
 return serverChosen(_that);case SessionStageUpdated():
 return stageUpdated(_that);case SessionStatusUpdated():
 return statusUpdated(_that);case SessionConnectTimedOut():
-return connectTimedOut(_that);}
+return connectTimedOut(_that);case SessionKillSwitchChanged():
+return killSwitchChanged(_that);case SessionNetworkPathChanged():
+return networkPathChanged(_that);case SessionOpenSystemVpnSettings():
+return openSystemVpnSettings(_that);}
 }
 /// A variant of `map` that fallback to returning `null`.
 ///
@@ -107,7 +113,7 @@ return connectTimedOut(_that);}
 /// }
 /// ```
 
-@optionalTypeArgs TResult? mapOrNull<TResult extends Object?>({TResult? Function( SessionStarted value)?  started,TResult? Function( SessionConnectPressed value)?  connectPressed,TResult? Function( SessionDisconnectPressed value)?  disconnectPressed,TResult? Function( SessionServerChosen value)?  serverChosen,TResult? Function( SessionStageUpdated value)?  stageUpdated,TResult? Function( SessionStatusUpdated value)?  statusUpdated,TResult? Function( SessionConnectTimedOut value)?  connectTimedOut,}){
+@optionalTypeArgs TResult? mapOrNull<TResult extends Object?>({TResult? Function( SessionStarted value)?  started,TResult? Function( SessionConnectPressed value)?  connectPressed,TResult? Function( SessionDisconnectPressed value)?  disconnectPressed,TResult? Function( SessionServerChosen value)?  serverChosen,TResult? Function( SessionStageUpdated value)?  stageUpdated,TResult? Function( SessionStatusUpdated value)?  statusUpdated,TResult? Function( SessionConnectTimedOut value)?  connectTimedOut,TResult? Function( SessionKillSwitchChanged value)?  killSwitchChanged,TResult? Function( SessionNetworkPathChanged value)?  networkPathChanged,TResult? Function( SessionOpenSystemVpnSettings value)?  openSystemVpnSettings,}){
 final _that = this;
 switch (_that) {
 case SessionStarted() when started != null:
@@ -117,7 +123,10 @@ return disconnectPressed(_that);case SessionServerChosen() when serverChosen != 
 return serverChosen(_that);case SessionStageUpdated() when stageUpdated != null:
 return stageUpdated(_that);case SessionStatusUpdated() when statusUpdated != null:
 return statusUpdated(_that);case SessionConnectTimedOut() when connectTimedOut != null:
-return connectTimedOut(_that);case _:
+return connectTimedOut(_that);case SessionKillSwitchChanged() when killSwitchChanged != null:
+return killSwitchChanged(_that);case SessionNetworkPathChanged() when networkPathChanged != null:
+return networkPathChanged(_that);case SessionOpenSystemVpnSettings() when openSystemVpnSettings != null:
+return openSystemVpnSettings(_that);case _:
   return null;
 
 }
@@ -134,7 +143,7 @@ return connectTimedOut(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>({TResult Function( List<VpnLocation> locations,  VpnCredentials? credentials)?  started,TResult Function()?  connectPressed,TResult Function()?  disconnectPressed,TResult Function( VpnLocation location)?  serverChosen,TResult Function( String stage)?  stageUpdated,TResult Function( String duration,  String byteIn,  String byteOut)?  statusUpdated,TResult Function()?  connectTimedOut,required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>({TResult Function( List<VpnLocation> locations,  VpnCredentials? credentials)?  started,TResult Function()?  connectPressed,TResult Function()?  disconnectPressed,TResult Function( VpnLocation location)?  serverChosen,TResult Function( String stage)?  stageUpdated,TResult Function( String duration,  String byteIn,  String byteOut)?  statusUpdated,TResult Function()?  connectTimedOut,TResult Function( bool enabled)?  killSwitchChanged,TResult Function()?  networkPathChanged,TResult Function()?  openSystemVpnSettings,required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case SessionStarted() when started != null:
 return started(_that.locations,_that.credentials);case SessionConnectPressed() when connectPressed != null:
@@ -143,7 +152,10 @@ return disconnectPressed();case SessionServerChosen() when serverChosen != null:
 return serverChosen(_that.location);case SessionStageUpdated() when stageUpdated != null:
 return stageUpdated(_that.stage);case SessionStatusUpdated() when statusUpdated != null:
 return statusUpdated(_that.duration,_that.byteIn,_that.byteOut);case SessionConnectTimedOut() when connectTimedOut != null:
-return connectTimedOut();case _:
+return connectTimedOut();case SessionKillSwitchChanged() when killSwitchChanged != null:
+return killSwitchChanged(_that.enabled);case SessionNetworkPathChanged() when networkPathChanged != null:
+return networkPathChanged();case SessionOpenSystemVpnSettings() when openSystemVpnSettings != null:
+return openSystemVpnSettings();case _:
   return orElse();
 
 }
@@ -161,7 +173,7 @@ return connectTimedOut();case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>({required TResult Function( List<VpnLocation> locations,  VpnCredentials? credentials)  started,required TResult Function()  connectPressed,required TResult Function()  disconnectPressed,required TResult Function( VpnLocation location)  serverChosen,required TResult Function( String stage)  stageUpdated,required TResult Function( String duration,  String byteIn,  String byteOut)  statusUpdated,required TResult Function()  connectTimedOut,}) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>({required TResult Function( List<VpnLocation> locations,  VpnCredentials? credentials)  started,required TResult Function()  connectPressed,required TResult Function()  disconnectPressed,required TResult Function( VpnLocation location)  serverChosen,required TResult Function( String stage)  stageUpdated,required TResult Function( String duration,  String byteIn,  String byteOut)  statusUpdated,required TResult Function()  connectTimedOut,required TResult Function( bool enabled)  killSwitchChanged,required TResult Function()  networkPathChanged,required TResult Function()  openSystemVpnSettings,}) {final _that = this;
 switch (_that) {
 case SessionStarted():
 return started(_that.locations,_that.credentials);case SessionConnectPressed():
@@ -170,7 +182,10 @@ return disconnectPressed();case SessionServerChosen():
 return serverChosen(_that.location);case SessionStageUpdated():
 return stageUpdated(_that.stage);case SessionStatusUpdated():
 return statusUpdated(_that.duration,_that.byteIn,_that.byteOut);case SessionConnectTimedOut():
-return connectTimedOut();}
+return connectTimedOut();case SessionKillSwitchChanged():
+return killSwitchChanged(_that.enabled);case SessionNetworkPathChanged():
+return networkPathChanged();case SessionOpenSystemVpnSettings():
+return openSystemVpnSettings();}
 }
 /// A variant of `when` that fallback to returning `null`
 ///
@@ -184,7 +199,7 @@ return connectTimedOut();}
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>({TResult? Function( List<VpnLocation> locations,  VpnCredentials? credentials)?  started,TResult? Function()?  connectPressed,TResult? Function()?  disconnectPressed,TResult? Function( VpnLocation location)?  serverChosen,TResult? Function( String stage)?  stageUpdated,TResult? Function( String duration,  String byteIn,  String byteOut)?  statusUpdated,TResult? Function()?  connectTimedOut,}) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>({TResult? Function( List<VpnLocation> locations,  VpnCredentials? credentials)?  started,TResult? Function()?  connectPressed,TResult? Function()?  disconnectPressed,TResult? Function( VpnLocation location)?  serverChosen,TResult? Function( String stage)?  stageUpdated,TResult? Function( String duration,  String byteIn,  String byteOut)?  statusUpdated,TResult? Function()?  connectTimedOut,TResult? Function( bool enabled)?  killSwitchChanged,TResult? Function()?  networkPathChanged,TResult? Function()?  openSystemVpnSettings,}) {final _that = this;
 switch (_that) {
 case SessionStarted() when started != null:
 return started(_that.locations,_that.credentials);case SessionConnectPressed() when connectPressed != null:
@@ -193,7 +208,10 @@ return disconnectPressed();case SessionServerChosen() when serverChosen != null:
 return serverChosen(_that.location);case SessionStageUpdated() when stageUpdated != null:
 return stageUpdated(_that.stage);case SessionStatusUpdated() when statusUpdated != null:
 return statusUpdated(_that.duration,_that.byteIn,_that.byteOut);case SessionConnectTimedOut() when connectTimedOut != null:
-return connectTimedOut();case _:
+return connectTimedOut();case SessionKillSwitchChanged() when killSwitchChanged != null:
+return killSwitchChanged(_that.enabled);case SessionNetworkPathChanged() when networkPathChanged != null:
+return networkPathChanged();case SessionOpenSystemVpnSettings() when openSystemVpnSettings != null:
+return openSystemVpnSettings();case _:
   return null;
 
 }
@@ -595,9 +613,139 @@ String toString() {
 
 
 /// @nodoc
+
+
+class SessionKillSwitchChanged implements SessionEvent {
+  const SessionKillSwitchChanged(this.enabled);
+  
+
+ final  bool enabled;
+
+/// Create a copy of SessionEvent
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$SessionKillSwitchChangedCopyWith<SessionKillSwitchChanged> get copyWith => _$SessionKillSwitchChangedCopyWithImpl<SessionKillSwitchChanged>(this, _$identity);
+
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is SessionKillSwitchChanged&&(identical(other.enabled, enabled) || other.enabled == enabled));
+}
+
+
+@override
+int get hashCode => Object.hash(runtimeType,enabled);
+
+@override
+String toString() {
+  return 'SessionEvent.killSwitchChanged(enabled: $enabled)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $SessionKillSwitchChangedCopyWith<$Res> implements $SessionEventCopyWith<$Res> {
+  factory $SessionKillSwitchChangedCopyWith(SessionKillSwitchChanged value, $Res Function(SessionKillSwitchChanged) _then) = _$SessionKillSwitchChangedCopyWithImpl;
+@useResult
+$Res call({
+ bool enabled
+});
+
+
+
+
+}
+/// @nodoc
+class _$SessionKillSwitchChangedCopyWithImpl<$Res>
+    implements $SessionKillSwitchChangedCopyWith<$Res> {
+  _$SessionKillSwitchChangedCopyWithImpl(this._self, this._then);
+
+  final SessionKillSwitchChanged _self;
+  final $Res Function(SessionKillSwitchChanged) _then;
+
+/// Create a copy of SessionEvent
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') $Res call({Object? enabled = null,}) {
+  return _then(SessionKillSwitchChanged(
+null == enabled ? _self.enabled : enabled // ignore: cast_nullable_to_non_nullable
+as bool,
+  ));
+}
+
+
+}
+
+/// @nodoc
+
+
+class SessionNetworkPathChanged implements SessionEvent {
+  const SessionNetworkPathChanged();
+  
+
+
+
+
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is SessionNetworkPathChanged);
+}
+
+
+@override
+int get hashCode => runtimeType.hashCode;
+
+@override
+String toString() {
+  return 'SessionEvent.networkPathChanged()';
+}
+
+
+}
+
+
+
+
+/// @nodoc
+
+
+class SessionOpenSystemVpnSettings implements SessionEvent {
+  const SessionOpenSystemVpnSettings();
+  
+
+
+
+
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is SessionOpenSystemVpnSettings);
+}
+
+
+@override
+int get hashCode => runtimeType.hashCode;
+
+@override
+String toString() {
+  return 'SessionEvent.openSystemVpnSettings()';
+}
+
+
+}
+
+
+
+
+/// @nodoc
 mixin _$SessionState {
 
- SessionPhase get phase; VpnLocation? get selected; VpnCredentials? get credentials; String get duration; String? get message; bool get didRefreshOnFailure;
+ SessionPhase get phase; VpnLocation? get selected; VpnCredentials? get credentials; String get duration; String? get message; bool get didRefreshOnFailure; bool get killSwitchEnabled; bool get reconnecting;
 /// Create a copy of SessionState
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -608,16 +756,16 @@ $SessionStateCopyWith<SessionState> get copyWith => _$SessionStateCopyWithImpl<S
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is SessionState&&(identical(other.phase, phase) || other.phase == phase)&&(identical(other.selected, selected) || other.selected == selected)&&(identical(other.credentials, credentials) || other.credentials == credentials)&&(identical(other.duration, duration) || other.duration == duration)&&(identical(other.message, message) || other.message == message)&&(identical(other.didRefreshOnFailure, didRefreshOnFailure) || other.didRefreshOnFailure == didRefreshOnFailure));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is SessionState&&(identical(other.phase, phase) || other.phase == phase)&&(identical(other.selected, selected) || other.selected == selected)&&(identical(other.credentials, credentials) || other.credentials == credentials)&&(identical(other.duration, duration) || other.duration == duration)&&(identical(other.message, message) || other.message == message)&&(identical(other.didRefreshOnFailure, didRefreshOnFailure) || other.didRefreshOnFailure == didRefreshOnFailure)&&(identical(other.killSwitchEnabled, killSwitchEnabled) || other.killSwitchEnabled == killSwitchEnabled)&&(identical(other.reconnecting, reconnecting) || other.reconnecting == reconnecting));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,phase,selected,credentials,duration,message,didRefreshOnFailure);
+int get hashCode => Object.hash(runtimeType,phase,selected,credentials,duration,message,didRefreshOnFailure,killSwitchEnabled,reconnecting);
 
 @override
 String toString() {
-  return 'SessionState(phase: $phase, selected: $selected, credentials: $credentials, duration: $duration, message: $message, didRefreshOnFailure: $didRefreshOnFailure)';
+  return 'SessionState(phase: $phase, selected: $selected, credentials: $credentials, duration: $duration, message: $message, didRefreshOnFailure: $didRefreshOnFailure, killSwitchEnabled: $killSwitchEnabled, reconnecting: $reconnecting)';
 }
 
 
@@ -628,7 +776,7 @@ abstract mixin class $SessionStateCopyWith<$Res>  {
   factory $SessionStateCopyWith(SessionState value, $Res Function(SessionState) _then) = _$SessionStateCopyWithImpl;
 @useResult
 $Res call({
- SessionPhase phase, VpnLocation? selected, VpnCredentials? credentials, String duration, String? message, bool didRefreshOnFailure
+ SessionPhase phase, VpnLocation? selected, VpnCredentials? credentials, String duration, String? message, bool didRefreshOnFailure, bool killSwitchEnabled, bool reconnecting
 });
 
 
@@ -645,7 +793,7 @@ class _$SessionStateCopyWithImpl<$Res>
 
 /// Create a copy of SessionState
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? phase = null,Object? selected = freezed,Object? credentials = freezed,Object? duration = null,Object? message = freezed,Object? didRefreshOnFailure = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? phase = null,Object? selected = freezed,Object? credentials = freezed,Object? duration = null,Object? message = freezed,Object? didRefreshOnFailure = null,Object? killSwitchEnabled = null,Object? reconnecting = null,}) {
   return _then(_self.copyWith(
 phase: null == phase ? _self.phase : phase // ignore: cast_nullable_to_non_nullable
 as SessionPhase,selected: freezed == selected ? _self.selected : selected // ignore: cast_nullable_to_non_nullable
@@ -653,6 +801,8 @@ as VpnLocation?,credentials: freezed == credentials ? _self.credentials : creden
 as VpnCredentials?,duration: null == duration ? _self.duration : duration // ignore: cast_nullable_to_non_nullable
 as String,message: freezed == message ? _self.message : message // ignore: cast_nullable_to_non_nullable
 as String?,didRefreshOnFailure: null == didRefreshOnFailure ? _self.didRefreshOnFailure : didRefreshOnFailure // ignore: cast_nullable_to_non_nullable
+as bool,killSwitchEnabled: null == killSwitchEnabled ? _self.killSwitchEnabled : killSwitchEnabled // ignore: cast_nullable_to_non_nullable
+as bool,reconnecting: null == reconnecting ? _self.reconnecting : reconnecting // ignore: cast_nullable_to_non_nullable
 as bool,
   ));
 }
@@ -762,10 +912,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( SessionPhase phase,  VpnLocation? selected,  VpnCredentials? credentials,  String duration,  String? message,  bool didRefreshOnFailure)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( SessionPhase phase,  VpnLocation? selected,  VpnCredentials? credentials,  String duration,  String? message,  bool didRefreshOnFailure,  bool killSwitchEnabled,  bool reconnecting)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _SessionState() when $default != null:
-return $default(_that.phase,_that.selected,_that.credentials,_that.duration,_that.message,_that.didRefreshOnFailure);case _:
+return $default(_that.phase,_that.selected,_that.credentials,_that.duration,_that.message,_that.didRefreshOnFailure,_that.killSwitchEnabled,_that.reconnecting);case _:
   return orElse();
 
 }
@@ -783,10 +933,10 @@ return $default(_that.phase,_that.selected,_that.credentials,_that.duration,_tha
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( SessionPhase phase,  VpnLocation? selected,  VpnCredentials? credentials,  String duration,  String? message,  bool didRefreshOnFailure)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( SessionPhase phase,  VpnLocation? selected,  VpnCredentials? credentials,  String duration,  String? message,  bool didRefreshOnFailure,  bool killSwitchEnabled,  bool reconnecting)  $default,) {final _that = this;
 switch (_that) {
 case _SessionState():
-return $default(_that.phase,_that.selected,_that.credentials,_that.duration,_that.message,_that.didRefreshOnFailure);case _:
+return $default(_that.phase,_that.selected,_that.credentials,_that.duration,_that.message,_that.didRefreshOnFailure,_that.killSwitchEnabled,_that.reconnecting);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -803,10 +953,10 @@ return $default(_that.phase,_that.selected,_that.credentials,_that.duration,_tha
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( SessionPhase phase,  VpnLocation? selected,  VpnCredentials? credentials,  String duration,  String? message,  bool didRefreshOnFailure)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( SessionPhase phase,  VpnLocation? selected,  VpnCredentials? credentials,  String duration,  String? message,  bool didRefreshOnFailure,  bool killSwitchEnabled,  bool reconnecting)?  $default,) {final _that = this;
 switch (_that) {
 case _SessionState() when $default != null:
-return $default(_that.phase,_that.selected,_that.credentials,_that.duration,_that.message,_that.didRefreshOnFailure);case _:
+return $default(_that.phase,_that.selected,_that.credentials,_that.duration,_that.message,_that.didRefreshOnFailure,_that.killSwitchEnabled,_that.reconnecting);case _:
   return null;
 
 }
@@ -818,7 +968,7 @@ return $default(_that.phase,_that.selected,_that.credentials,_that.duration,_tha
 
 
 class _SessionState extends SessionState {
-  const _SessionState({this.phase = SessionPhase.idle, this.selected, this.credentials, this.duration = '00:00:00', this.message, this.didRefreshOnFailure = false}): super._();
+  const _SessionState({this.phase = SessionPhase.idle, this.selected, this.credentials, this.duration = '00:00:00', this.message, this.didRefreshOnFailure = false, this.killSwitchEnabled = true, this.reconnecting = false}): super._();
   
 
 @override@JsonKey() final  SessionPhase phase;
@@ -827,6 +977,8 @@ class _SessionState extends SessionState {
 @override@JsonKey() final  String duration;
 @override final  String? message;
 @override@JsonKey() final  bool didRefreshOnFailure;
+@override@JsonKey() final  bool killSwitchEnabled;
+@override@JsonKey() final  bool reconnecting;
 
 /// Create a copy of SessionState
 /// with the given fields replaced by the non-null parameter values.
@@ -838,16 +990,16 @@ _$SessionStateCopyWith<_SessionState> get copyWith => __$SessionStateCopyWithImp
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _SessionState&&(identical(other.phase, phase) || other.phase == phase)&&(identical(other.selected, selected) || other.selected == selected)&&(identical(other.credentials, credentials) || other.credentials == credentials)&&(identical(other.duration, duration) || other.duration == duration)&&(identical(other.message, message) || other.message == message)&&(identical(other.didRefreshOnFailure, didRefreshOnFailure) || other.didRefreshOnFailure == didRefreshOnFailure));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _SessionState&&(identical(other.phase, phase) || other.phase == phase)&&(identical(other.selected, selected) || other.selected == selected)&&(identical(other.credentials, credentials) || other.credentials == credentials)&&(identical(other.duration, duration) || other.duration == duration)&&(identical(other.message, message) || other.message == message)&&(identical(other.didRefreshOnFailure, didRefreshOnFailure) || other.didRefreshOnFailure == didRefreshOnFailure)&&(identical(other.killSwitchEnabled, killSwitchEnabled) || other.killSwitchEnabled == killSwitchEnabled)&&(identical(other.reconnecting, reconnecting) || other.reconnecting == reconnecting));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,phase,selected,credentials,duration,message,didRefreshOnFailure);
+int get hashCode => Object.hash(runtimeType,phase,selected,credentials,duration,message,didRefreshOnFailure,killSwitchEnabled,reconnecting);
 
 @override
 String toString() {
-  return 'SessionState(phase: $phase, selected: $selected, credentials: $credentials, duration: $duration, message: $message, didRefreshOnFailure: $didRefreshOnFailure)';
+  return 'SessionState(phase: $phase, selected: $selected, credentials: $credentials, duration: $duration, message: $message, didRefreshOnFailure: $didRefreshOnFailure, killSwitchEnabled: $killSwitchEnabled, reconnecting: $reconnecting)';
 }
 
 
@@ -858,7 +1010,7 @@ abstract mixin class _$SessionStateCopyWith<$Res> implements $SessionStateCopyWi
   factory _$SessionStateCopyWith(_SessionState value, $Res Function(_SessionState) _then) = __$SessionStateCopyWithImpl;
 @override @useResult
 $Res call({
- SessionPhase phase, VpnLocation? selected, VpnCredentials? credentials, String duration, String? message, bool didRefreshOnFailure
+ SessionPhase phase, VpnLocation? selected, VpnCredentials? credentials, String duration, String? message, bool didRefreshOnFailure, bool killSwitchEnabled, bool reconnecting
 });
 
 
@@ -875,7 +1027,7 @@ class __$SessionStateCopyWithImpl<$Res>
 
 /// Create a copy of SessionState
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? phase = null,Object? selected = freezed,Object? credentials = freezed,Object? duration = null,Object? message = freezed,Object? didRefreshOnFailure = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? phase = null,Object? selected = freezed,Object? credentials = freezed,Object? duration = null,Object? message = freezed,Object? didRefreshOnFailure = null,Object? killSwitchEnabled = null,Object? reconnecting = null,}) {
   return _then(_SessionState(
 phase: null == phase ? _self.phase : phase // ignore: cast_nullable_to_non_nullable
 as SessionPhase,selected: freezed == selected ? _self.selected : selected // ignore: cast_nullable_to_non_nullable
@@ -883,6 +1035,8 @@ as VpnLocation?,credentials: freezed == credentials ? _self.credentials : creden
 as VpnCredentials?,duration: null == duration ? _self.duration : duration // ignore: cast_nullable_to_non_nullable
 as String,message: freezed == message ? _self.message : message // ignore: cast_nullable_to_non_nullable
 as String?,didRefreshOnFailure: null == didRefreshOnFailure ? _self.didRefreshOnFailure : didRefreshOnFailure // ignore: cast_nullable_to_non_nullable
+as bool,killSwitchEnabled: null == killSwitchEnabled ? _self.killSwitchEnabled : killSwitchEnabled // ignore: cast_nullable_to_non_nullable
+as bool,reconnecting: null == reconnecting ? _self.reconnecting : reconnecting // ignore: cast_nullable_to_non_nullable
 as bool,
   ));
 }

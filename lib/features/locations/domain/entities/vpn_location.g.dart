@@ -15,7 +15,7 @@ _VpnLocation _$VpnLocationFromJson(Map<String, dynamic> json) => _VpnLocation(
   flagUrl: jsonString(json['flagUrl']),
   config: jsonString(json['config']),
   networkFlagUrl: jsonString(json['networkFlagUrl']),
-  isPremium: json['isPremium'] as bool,
+  isPremium: jsonBool(json['isPremium']),
 );
 
 Map<String, dynamic> _$VpnLocationToJson(_VpnLocation instance) =>

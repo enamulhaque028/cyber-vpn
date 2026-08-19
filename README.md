@@ -10,7 +10,7 @@ Flutter VPN client. Features are vertical slices (`domain` / `data` / `presentat
 - **DI:** **GetIt** in `lib/app/di.dart` (manual registration, no Injectable). Blocs are still provided with `BlocProvider`.
 - **Nav:** auto_route. **Tunnel:** `axevpn_flutter` behind `TunnelRepository`.
 
-MVP uses the same OpenVPN servers as Turbo Secure VPN. The app is **not store-ready** until STATUS P0 (IAP, minutes, ads, kill switch) is done.
+MVP uses the same OpenVPN servers as Turbo Secure VPN. IAP / minutes / ads are **deferred**. Kill switch + reconnect are in; the app is **not store-ready** until STATUS P0 money + store/trust are done.
 
 ## Run
 
@@ -24,8 +24,10 @@ flutter run
 ## Android
 
 - `minSdk` 24
-- `extractNativeLibs`, 16 KB page-size flags, legacy JNI packaging
-- `MainActivity` VPN-permission result (`requestCode == 24`)
+- `extractNativeLibs`, 16 KB page-size flags, legacy JNI packaging, `pickFirst` for `libwg-go.so`
+- `MainActivity` VPN-permission result (`requestCode == 24`) and VPN settings channel
+- Hard kill switch: in-app Settings → Always-on VPN → system profile → Always-on **and** Block connections without VPN
+- Always-on **on** means tapping Protect to disconnect usually comes back; turn Always-on off first to stay disconnected
 
 ## iOS
 

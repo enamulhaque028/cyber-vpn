@@ -1,9 +1,11 @@
 import 'package:auto_route/auto_route.dart';
+import 'package:cyber_vpn/core/config/app_config.dart';
+import 'package:cyber_vpn/features/session/presentation/bloc/session_bloc.dart';
 import 'package:cyber_vpn/features/settings/presentation/bloc/theme_cubit.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:cyber_vpn/core/config/app_config.dart';
 
 @RoutePage()
 class SettingsPage extends StatelessWidget {
@@ -11,16 +13,51 @@ class SettingsPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     return Scaffold(
       appBar: AppBar(title: const Text('Settings')),
       body: ListView(
         children: [
-          const ListTile(
-            title: Text('Kill switch'),
-            subtitle: Text(
-              'Best-effort on this OpenVPN stack. Full always-on comes with the later fleet.',
+          BlocBuilder<SessionBloc, SessionState>(
+            buildWhen: (p, n) => p.killSwitchEnabled != n.killSwitchEnabled,
+            builder: (context, session) {
+              return SwitchListTile(
+                title: const Text('Kill switch'),
+                subtitle: const Text(
+                  'If the tunnel drops, reconnect immediately and block IPv6 leak on this OpenVPN stack. For a hard block on Android, also enable Always-on below.',
+                ),
+                value: session.killSwitchEnabled,
+                onChanged: (v) => context.read<SessionBloc>().add(
+                  SessionEvent.killSwitchChanged(v),
+                ),
+              );
+            },
+          ),
+          if (defaultTargetPlatform == TargetPlatform.android)
+            ListTile(
+              title: const Text('Always-on VPN'),
+              subtitle: Text(
+                'Open Android VPN settings, choose Cyber VPN, then turn on Always-on VPN and Block connections without VPN. That is the real leak block; the in-app switch cannot freeze the whole device.',
+                style: TextStyle(color: scheme.secondary),
+              ),
+              trailing: const Icon(Icons.open_in_new),
+              onTap: () => context.read<SessionBloc>().add(
+                const SessionEvent.openSystemVpnSettings(),
+              ),
+            )
+          else
+            ListTile(
+              title: const Text('Stay protected on iOS'),
+              subtitle: Text(
+                'The extension reconnects when Wi-Fi or cellular returns. Kill switch keeps the TUN up and blocks IPv6. Full On Demand is a later slice.',
+                style: TextStyle(color: scheme.secondary),
+              ),
             ),
-            trailing: Switch(value: true, onChanged: null),
+          const ListTile(
+            title: Text('Auto-reconnect'),
+            subtitle: Text(
+              'While Protect is on, a drop or network change retries the same location (up to 5 times).',
+            ),
           ),
           BlocBuilder<ThemeCubit, ThemeMode>(
             builder: (context, mode) {

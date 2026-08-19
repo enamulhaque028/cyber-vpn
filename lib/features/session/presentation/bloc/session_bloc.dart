@@ -1,5 +1,7 @@
 import 'dart:async';
+import 'dart:math';
 
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:cyber_vpn/core/config/app_config.dart';
 import 'package:cyber_vpn/features/locations/domain/entities/vpn_location.dart';
 import 'package:cyber_vpn/features/locations/domain/repositories/locations_repository.dart';
@@ -13,8 +15,17 @@ part 'session_event.dart';
 part 'session_state.dart';
 
 class SessionBloc extends Bloc<SessionEvent, SessionState> {
-  SessionBloc(this._tunnel, this._locations, this._prefs)
-    : super(const SessionState()) {
+  SessionBloc(
+    this._tunnel,
+    this._locations,
+    this._prefs, {
+    Connectivity? connectivity,
+  }) : _connectivity = connectivity ?? Connectivity(),
+       super(
+         SessionState(
+           killSwitchEnabled: _prefs.getBool(AppConfig.prefsKillSwitch) ?? true,
+         ),
+       ) {
     on<SessionStarted>(_onStarted);
     on<SessionConnectPressed>(_onConnect);
     on<SessionDisconnectPressed>(_onDisconnect);
@@ -22,17 +33,27 @@ class SessionBloc extends Bloc<SessionEvent, SessionState> {
     on<SessionStageUpdated>(_onStage);
     on<SessionStatusUpdated>(_onStatus);
     on<SessionConnectTimedOut>(_onConnectTimedOut);
+    on<SessionKillSwitchChanged>(_onKillSwitchChanged);
+    on<SessionNetworkPathChanged>(_onNetworkPathChanged);
+    on<SessionOpenSystemVpnSettings>(_onOpenSystemVpnSettings);
   }
 
   final TunnelRepository _tunnel;
   final LocationsRepository _locations;
   final SharedPreferences _prefs;
+  final Connectivity _connectivity;
   bool _initialized = false;
+  bool _intended = false;
+  int _reconnectAttempts = 0;
   Timer? _connectTimer;
+  Timer? _reconnectTimer;
+  StreamSubscription<List<ConnectivityResult>>? _pathSub;
 
   @override
   Future<void> close() {
     _connectTimer?.cancel();
+    _reconnectTimer?.cancel();
+    _pathSub?.cancel();
     return super.close();
   }
 
@@ -46,10 +67,17 @@ class SessionBloc extends Bloc<SessionEvent, SessionState> {
     _initialized = true;
   }
 
+  void _listenToPath() {
+    _pathSub ??= _connectivity.onConnectivityChanged.listen((_) {
+      add(const SessionEvent.networkPathChanged());
+    });
+  }
+
   Future<void> _onStarted(
     SessionStarted event,
     Emitter<SessionState> emit,
   ) async {
+    _listenToPath();
     try {
       await _ensureTunnel();
     } catch (e) {
@@ -89,6 +117,7 @@ class SessionBloc extends Bloc<SessionEvent, SessionState> {
     SessionConnectPressed event,
     Emitter<SessionState> emit,
   ) async {
+    _intended = true;
     try {
       await _ensureTunnel();
     } catch (e) {
@@ -138,18 +167,26 @@ class SessionBloc extends Bloc<SessionEvent, SessionState> {
       return;
     }
 
-    emit(state.copyWith(phase: SessionPhase.connecting, message: null));
+    emit(
+      state.copyWith(
+        phase: SessionPhase.connecting,
+        reconnecting: _reconnectAttempts > 0,
+        message: _reconnectAttempts > 0 ? 'Reconnecting…' : null,
+      ),
+    );
     try {
       await _tunnel.connect(
         config: location.config,
         country: location.country,
         username: creds.username,
         password: creds.password,
+        killSwitch: state.killSwitchEnabled,
       );
       _armConnectTimeout();
     } catch (e) {
       _connectTimer?.cancel();
       emit(state.copyWith(phase: SessionPhase.failed, message: e.toString()));
+      _scheduleReconnect();
     }
   }
 
@@ -158,6 +195,19 @@ class SessionBloc extends Bloc<SessionEvent, SessionState> {
     final seconds = state.credentials?.connectionTimeoutSeconds ?? 30;
     _connectTimer = Timer(Duration(seconds: seconds), () {
       add(const SessionEvent.connectTimedOut());
+    });
+  }
+
+  void _scheduleReconnect() {
+    if (!_intended) return;
+    _reconnectTimer?.cancel();
+    if (_reconnectAttempts >= 5) {
+      return;
+    }
+    final delaySeconds = min(8, 1 << _reconnectAttempts);
+    _reconnectAttempts++;
+    _reconnectTimer = Timer(Duration(seconds: delaySeconds), () {
+      if (_intended) add(const SessionEvent.connectPressed());
     });
   }
 
@@ -192,18 +242,30 @@ class SessionBloc extends Bloc<SessionEvent, SessionState> {
     emit(
       state.copyWith(
         phase: SessionPhase.failed,
+        reconnecting: false,
         message: 'Could not connect. Try another location.',
       ),
     );
+    _scheduleReconnect();
   }
 
   Future<void> _onDisconnect(
     SessionDisconnectPressed event,
     Emitter<SessionState> emit,
   ) async {
+    _intended = false;
+    _reconnectAttempts = 0;
     _connectTimer?.cancel();
+    _reconnectTimer?.cancel();
     await _tunnel.disconnect();
-    emit(state.copyWith(phase: SessionPhase.idle, duration: '00:00:00'));
+    emit(
+      state.copyWith(
+        phase: SessionPhase.idle,
+        duration: '00:00:00',
+        reconnecting: false,
+        message: null,
+      ),
+    );
   }
 
   Future<void> _onServerChosen(
@@ -223,21 +285,97 @@ class SessionBloc extends Bloc<SessionEvent, SessionState> {
     }
   }
 
+  Future<void> _onKillSwitchChanged(
+    SessionKillSwitchChanged event,
+    Emitter<SessionState> emit,
+  ) async {
+    await _prefs.setBool(AppConfig.prefsKillSwitch, event.enabled);
+    emit(state.copyWith(killSwitchEnabled: event.enabled));
+    if (_intended &&
+        (state.phase == SessionPhase.protected ||
+            state.phase == SessionPhase.connecting)) {
+      await _tunnel.disconnect();
+      add(const SessionEvent.connectPressed());
+    }
+  }
+
+  void _onNetworkPathChanged(
+    SessionNetworkPathChanged event,
+    Emitter<SessionState> emit,
+  ) {
+    if (!_intended) return;
+    if (state.phase == SessionPhase.protected) return;
+    if (state.phase == SessionPhase.connecting) return;
+    _scheduleReconnect();
+  }
+
+  Future<void> _onOpenSystemVpnSettings(
+    SessionOpenSystemVpnSettings event,
+    Emitter<SessionState> emit,
+  ) async {
+    try {
+      await _tunnel.openSystemVpnSettings();
+    } catch (e) {
+      emit(
+        state.copyWith(
+          message:
+              'Open Settings → Network & internet → VPN. Enable Always-on and Block connections without VPN.',
+        ),
+      );
+    }
+  }
+
   void _onStage(SessionStageUpdated event, Emitter<SessionState> emit) {
     final raw = event.stage.toLowerCase();
     if (raw.contains('connected') && !raw.contains('disconnected')) {
       _connectTimer?.cancel();
+      _reconnectTimer?.cancel();
+      _reconnectAttempts = 0;
       emit(
         state.copyWith(
           phase: SessionPhase.protected,
           didRefreshOnFailure: false,
+          reconnecting: false,
           message: null,
+        ),
+      );
+    } else if (raw.contains('reconnect')) {
+      emit(
+        state.copyWith(
+          phase: SessionPhase.connecting,
+          reconnecting: true,
+          message: 'Reconnecting…',
         ),
       );
     } else if (raw.contains('connecting') || raw.contains('wait')) {
       emit(state.copyWith(phase: SessionPhase.connecting));
-    } else if (raw.contains('disconnect') || raw.contains('denied')) {
-      emit(state.copyWith(phase: SessionPhase.idle));
+    } else if (raw.contains('denied')) {
+      _intended = false;
+      _reconnectTimer?.cancel();
+      emit(state.copyWith(phase: SessionPhase.idle, reconnecting: false));
+    } else if (raw.contains('disconnect') ||
+        raw.contains('error') ||
+        raw.contains('exit')) {
+      if (!_intended) {
+        emit(
+          state.copyWith(
+            phase: SessionPhase.idle,
+            reconnecting: false,
+            duration: '00:00:00',
+          ),
+        );
+        return;
+      }
+      emit(
+        state.copyWith(
+          phase: SessionPhase.connecting,
+          reconnecting: true,
+          message: state.killSwitchEnabled
+              ? 'Tunnel dropped. Reconnecting…'
+              : 'Reconnecting…',
+        ),
+      );
+      _scheduleReconnect();
     }
   }
 

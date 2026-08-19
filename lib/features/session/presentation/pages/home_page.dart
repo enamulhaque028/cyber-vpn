@@ -107,7 +107,8 @@ class _HomePageState extends State<HomePage> {
                     builder: (context, session) {
                       final subtitle = switch (session.phase) {
                         SessionPhase.protected => session.duration,
-                        SessionPhase.connecting => 'Connecting…',
+                        SessionPhase.connecting =>
+                          session.message ?? 'Connecting…',
                         SessionPhase.failed =>
                           session.message ?? 'Could not connect',
                         SessionPhase.idle => 'Tap to protect this device',

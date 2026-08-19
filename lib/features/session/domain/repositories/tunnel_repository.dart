@@ -10,7 +10,11 @@ abstract class TunnelRepository {
     required String country,
     required String username,
     required String password,
+    bool killSwitch = true,
   });
 
   Future<void> disconnect();
+
+  /// Android: system VPN settings (Always-on). iOS: app settings.
+  Future<void> openSystemVpnSettings();
 }
