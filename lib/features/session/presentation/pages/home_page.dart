@@ -80,10 +80,14 @@ class _HomePageState extends State<HomePage> {
           },
           child: SafeArea(
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
-              child: Column(
-                children: [
-                  BlocBuilder<SessionBloc, SessionState>(
+              padding: const EdgeInsets.fromLTRB(24, 8, 24, 16),
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  // Reference layout: banner / centered hero / pinned actions.
+                  // Scroll only on very short viewports where Spacers cannot fit.
+                  final mustScroll = constraints.maxHeight < 520;
+
+                  final banner = BlocBuilder<SessionBloc, SessionState>(
                     buildWhen: (p, n) =>
                         p.networkKind != n.networkKind || p.phase != n.phase,
                     builder: (context, session) {
@@ -92,9 +96,9 @@ class _HomePageState extends State<HomePage> {
                         protected: session.phase == SessionPhase.protected,
                       );
                     },
-                  ),
-                  const Spacer(),
-                  BlocBuilder<SessionBloc, SessionState>(
+                  );
+
+                  final ring = BlocBuilder<SessionBloc, SessionState>(
                     builder: (context, session) {
                       final phase = switch (session.phase) {
                         SessionPhase.connecting => ConnectRingPhase.connecting,
@@ -115,23 +119,20 @@ class _HomePageState extends State<HomePage> {
                         },
                       );
                     },
-                  ),
-                  const SizedBox(height: 20),
-                  BlocBuilder<SessionBloc, SessionState>(
+                  );
+
+                  final subtitle = BlocBuilder<SessionBloc, SessionState>(
                     builder: (context, session) {
-                      final subtitle = switch (session.phase) {
+                      final text = switch (session.phase) {
                         SessionPhase.protected => 'This device is protected',
-                        // ConnectRing already shows "Connecting" under the crest.
-                        SessionPhase.connecting => '',
+                        SessionPhase.connecting => null,
                         SessionPhase.failed =>
                           session.message ?? 'Could not connect',
                         SessionPhase.idle => 'Tap to protect this device',
                       };
-                      if (subtitle.isEmpty) {
-                        return const SizedBox(height: 22);
-                      }
+                      if (text == null) return const SizedBox.shrink();
                       return Text(
-                        subtitle,
+                        text,
                         textAlign: TextAlign.center,
                         style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                           color: session.phase == SessionPhase.failed
@@ -141,9 +142,9 @@ class _HomePageState extends State<HomePage> {
                         ),
                       );
                     },
-                  ),
-                  const SizedBox(height: 16),
-                  BlocBuilder<SessionBloc, SessionState>(
+                  );
+
+                  final stats = BlocBuilder<SessionBloc, SessionState>(
                     buildWhen: (p, n) =>
                         p.duration != n.duration ||
                         p.downRate != n.downRate ||
@@ -157,12 +158,13 @@ class _HomePageState extends State<HomePage> {
                         active: session.phase == SessionPhase.protected,
                       );
                     },
-                  ),
-                  const Spacer(),
-                  BlocBuilder<SessionBloc, SessionState>(
+                  );
+
+                  final location = BlocBuilder<SessionBloc, SessionState>(
                     builder: (context, session) {
                       final loc = session.selected;
                       return Card(
+                        margin: EdgeInsets.zero,
                         child: ListTile(
                           onTap: () =>
                               context.router.push(const LocationsRoute()),
@@ -185,21 +187,76 @@ class _HomePageState extends State<HomePage> {
                         ),
                       );
                     },
-                  ),
-                  const SizedBox(height: 12),
-                  ClButton(
-                    label: 'Check connection',
-                    variant: ClButtonVariant.ghost,
-                    onPressed: () =>
-                        context.router.push(const ConnectionInfoRoute()),
-                  ),
-                  const SizedBox(height: 8),
-                  ClButton(
-                    label: 'Go Premium',
-                    variant: ClButtonVariant.ghost,
-                    onPressed: () => context.router.push(const PaywallRoute()),
-                  ),
-                ],
+                  );
+
+                  final actions = Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      location,
+                      const SizedBox(height: 12),
+                      ClButton(
+                        label: 'Check connection',
+                        variant: ClButtonVariant.ghost,
+                        onPressed: () =>
+                            context.router.push(const ConnectionInfoRoute()),
+                      ),
+                      const SizedBox(height: 8),
+                      ClButton(
+                        label: 'Go Premium',
+                        variant: ClButtonVariant.ghost,
+                        onPressed: () =>
+                            context.router.push(const PaywallRoute()),
+                      ),
+                    ],
+                  );
+
+                  if (mustScroll) {
+                    return SingleChildScrollView(
+                      physics: const ClampingScrollPhysics(),
+                      child: Column(
+                        children: [
+                          banner,
+                          const SizedBox(height: 16),
+                          FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: ring,
+                          ),
+                          const SizedBox(height: 12),
+                          subtitle,
+                          const SizedBox(height: 12),
+                          stats,
+                          const SizedBox(height: 16),
+                          actions,
+                        ],
+                      ),
+                    );
+                  }
+
+                  // Reference composition — no scroll when height is enough.
+                  return Column(
+                    children: [
+                      banner,
+                      Expanded(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Flexible(
+                              child: FittedBox(
+                                fit: BoxFit.scaleDown,
+                                child: ring,
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            subtitle,
+                            const SizedBox(height: 14),
+                            stats,
+                          ],
+                        ),
+                      ),
+                      actions,
+                    ],
+                  );
+                },
               ),
             ),
           ),
