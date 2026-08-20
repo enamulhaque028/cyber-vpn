@@ -1,4 +1,5 @@
 import 'package:auto_route/auto_route.dart';
+import 'package:cyber_vpn/app/router.dart';
 import 'package:cyber_vpn/core/config/app_config.dart';
 import 'package:cyber_vpn/features/session/presentation/bloc/session_bloc.dart';
 import 'package:cyber_vpn/features/settings/presentation/bloc/theme_cubit.dart';
@@ -58,6 +59,24 @@ class SettingsPage extends StatelessWidget {
             subtitle: Text(
               'While Protect is on, a drop or network change retries the same location (up to 5 times).',
             ),
+          ),
+          ListTile(
+            title: const Text('Usage history'),
+            subtitle: Text(
+              'On-device session time and data. No browsing destinations.',
+              style: TextStyle(color: scheme.secondary),
+            ),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => context.router.push(const HistoryRoute()),
+          ),
+          ListTile(
+            title: const Text('Connection check'),
+            subtitle: Text(
+              'HTTPS exit city / ISP while Protected.',
+              style: TextStyle(color: scheme.secondary),
+            ),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => context.router.push(const ConnectionInfoRoute()),
           ),
           BlocBuilder<ThemeCubit, ThemeMode>(
             builder: (context, mode) {

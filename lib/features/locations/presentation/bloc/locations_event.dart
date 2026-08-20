@@ -8,4 +8,8 @@ sealed class LocationsEvent with _$LocationsEvent {
       LocationsQueryChanged;
   const factory LocationsEvent.rttMeasured(int id, int? milliseconds) =
       LocationsRttMeasured;
+  const factory LocationsEvent.favoriteToggled(int id) =
+      LocationsFavoriteToggled;
+  const factory LocationsEvent.recentRemembered(int id) =
+      LocationsRecentRemembered;
 }

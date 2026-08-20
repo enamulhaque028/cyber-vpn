@@ -2,7 +2,7 @@
 
 **Last updated:** 20 August 2026  
 **Repo:** `cyber-vpn` (new app). Turbo Secure is `flutter_vpn` — reference only.  
-**Verdict:** Architecture + OpenVPN client with **kill switch / reconnect**. **Not store-ready.** IAP / minutes / ads **deferred** (owner: after remaining product features).
+**Verdict:** OpenVPN client with kill switch, threat/stats/ping, **exit check**, **favorites/recents**, **session history**. **Not store-ready.** IAP deferred.
 
 ---
 
@@ -29,9 +29,11 @@ Shipped behavior with details: **[FEATURES.md](FEATURES.md)**.
 ### Product / UX (thin)
 
 - Splash → privacy declaration → Home.
-- Home: Protect ring, threat banner, stats ticker, location row, Go Premium.
-- Locations: search, flags, premium → paywall route, ping bars.
-- Settings: theme, kill switch, Android Always-on / iOS stay-protected copy.
+- Home: Protect ring, threat banner, stats ticker, location row, Check connection, Go Premium.
+- Locations: All / Favorites / Recent tabs, search on All, flags, premium → paywall route, ping bars.
+- Connection: HTTPS exit IP / city / country / ISP (`ipwho.is`; Freezed response DTO).
+- History: on-device sessions with summary, 7-day chart, relative bars (Settings).
+- Settings: theme, kill switch, Android Always-on / iOS stay-protected, history + connection links.
 - Paywall: static $39.99 / $9.99. No store.
 
 ### Engineering
@@ -46,6 +48,9 @@ Shipped behavior with details: **[FEATURES.md](FEATURES.md)**.
 - Threat banner: `NetworkKind` from `connectivity_plus` (Wi‑Fi = untrusted, cellular, none). No SSID. Copy changes when `SessionPhase.protected`.
 - Stats ticker: OpenVPN byte counters → rates in `SessionBloc`; Home `StatsTicker`. Values are volume/rate only, not destinations.
 - Ping: `OpenVpnRemote.first` + `TcpServerProbe` (prefer TCP remote, else try 443; timeout ~1.8s, concurrency 4). Failed probe = empty bar, not an IP.
+- Exit check: `ExitIpApi` (Dio + Retrofit) → `https://ipwho.is/` only; `IpWhoIsExitIpRepository` maps `IpWhoIsResponse` → `ExitInfo`. Shown on Connection page; not persisted.
+- Favorites / recents: location IDs in SharedPreferences; Locations **tabs** (All flat list; Favorites / Recent filtered).
+- Session history: `PrefsSessionHistoryRepository` (max 50); recorded when a protected session ends (≥3s) with byte deltas finished before counters clear; History UI uses `fl_chart`.
 - No UXCam. No global TLS bypass.
 
 ### Identifiers
@@ -69,7 +74,8 @@ Money loop is **deferred**. Next agent should continue **retention / product**, 
 ### Next — retention / product (do this now)
 
 1. Connection polish: `PremiumGate` widget (UI only until IAP), goldens for Home / Paywall / Locations × light × dark.
-2. `bloc_test` for Session (kill switch / reconnect / path) / Locations (ping).
+2. `bloc_test` for Session / Locations / History / Exit check.
+3. Tier B from [FEATURES.md — Enrichment roadmap](FEATURES.md#enrichment-roadmap-same-doc): widget, auto best-ping, Android split tunnel (later).
 
 ### P0 — money loop (later, owner request)
 

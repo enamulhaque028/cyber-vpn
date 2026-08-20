@@ -6,7 +6,9 @@ import 'package:cyber_vpn/core/config/app_config.dart';
 import 'package:cyber_vpn/core/utils/traffic_format.dart';
 import 'package:cyber_vpn/features/locations/domain/entities/vpn_location.dart';
 import 'package:cyber_vpn/features/locations/domain/repositories/locations_repository.dart';
+import 'package:cyber_vpn/features/session/domain/entities/session_record.dart';
 import 'package:cyber_vpn/features/session/domain/network_kind.dart';
+import 'package:cyber_vpn/features/session/domain/repositories/session_history_repository.dart';
 import 'package:cyber_vpn/features/session/domain/repositories/tunnel_repository.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
@@ -20,7 +22,8 @@ class SessionBloc extends Bloc<SessionEvent, SessionState> {
   SessionBloc(
     this._tunnel,
     this._locations,
-    this._prefs, {
+    this._prefs,
+    this._history, {
     Connectivity? connectivity,
   }) : _connectivity = connectivity ?? Connectivity(),
        super(
@@ -43,6 +46,7 @@ class SessionBloc extends Bloc<SessionEvent, SessionState> {
   final TunnelRepository _tunnel;
   final LocationsRepository _locations;
   final SharedPreferences _prefs;
+  final SessionHistoryRepository _history;
   final Connectivity _connectivity;
   bool _initialized = false;
   bool _intended = false;
@@ -53,6 +57,11 @@ class SessionBloc extends Bloc<SessionEvent, SessionState> {
   int? _lastBytesIn;
   int? _lastBytesOut;
   DateTime? _lastBytesAt;
+  DateTime? _sessionStartedAt;
+  int _sessionBytesIn = 0;
+  int _sessionBytesOut = 0;
+  String _sessionLocationName = '';
+  int? _sessionLocationId;
 
   static NetworkKind kindFrom(List<ConnectivityResult> results) {
     if (results.isEmpty ||
@@ -212,6 +221,47 @@ class SessionBloc extends Bloc<SessionEvent, SessionState> {
     }
   }
 
+  Future<void> _finishSessionRecord() async {
+    final started = _sessionStartedAt;
+    final id = _sessionLocationId;
+    if (started == null || id == null) return;
+    final ended = DateTime.now();
+    final bytesIn = _sessionDeltaIn;
+    final bytesOut = _sessionDeltaOut;
+    _sessionStartedAt = null;
+    _sessionBytesIn = 0;
+    _sessionBytesOut = 0;
+    if (ended.difference(started).inSeconds < 3) return;
+    try {
+      await _history.add(
+        SessionRecord(
+          locationId: id,
+          locationName: _sessionLocationName,
+          startedAt: started,
+          endedAt: ended,
+          bytesIn: bytesIn,
+          bytesOut: bytesOut,
+        ),
+      );
+    } catch (_) {}
+  }
+
+  void _beginSessionRecord() {
+    final loc = state.selected;
+    _sessionStartedAt = DateTime.now();
+    _sessionLocationId = loc?.id;
+    _sessionLocationName = loc?.displayName ?? 'Unknown';
+    // Baseline at connect; if status has not fired yet, treat later totals
+    // as absolute session counters from 0.
+    _sessionBytesIn = _lastBytesIn ?? 0;
+    _sessionBytesOut = _lastBytesOut ?? 0;
+  }
+
+  int get _sessionDeltaIn =>
+      ((_lastBytesIn ?? _sessionBytesIn) - _sessionBytesIn).clamp(0, 1 << 62);
+  int get _sessionDeltaOut =>
+      ((_lastBytesOut ?? _sessionBytesOut) - _sessionBytesOut).clamp(0, 1 << 62);
+
   void _armConnectTimeout() {
     _connectTimer?.cancel();
     final seconds = state.credentials?.connectionTimeoutSeconds ?? 30;
@@ -277,11 +327,13 @@ class SessionBloc extends Bloc<SessionEvent, SessionState> {
   ) async {
     _intended = false;
     _reconnectAttempts = 0;
+    _connectTimer?.cancel();
+    _reconnectTimer?.cancel();
+    // Finish before clearing byte counters — deltas use _lastBytes*.
+    await _finishSessionRecord();
     _lastBytesIn = null;
     _lastBytesOut = null;
     _lastBytesAt = null;
-    _connectTimer?.cancel();
-    _reconnectTimer?.cancel();
     await _tunnel.disconnect();
     emit(
       state.copyWith(
@@ -353,12 +405,18 @@ class SessionBloc extends Bloc<SessionEvent, SessionState> {
     }
   }
 
-  void _onStage(SessionStageUpdated event, Emitter<SessionState> emit) {
+  Future<void> _onStage(
+    SessionStageUpdated event,
+    Emitter<SessionState> emit,
+  ) async {
     final raw = event.stage.toLowerCase();
     if (raw.contains('connected') && !raw.contains('disconnected')) {
       _connectTimer?.cancel();
       _reconnectTimer?.cancel();
       _reconnectAttempts = 0;
+      if (_sessionStartedAt == null) {
+        _beginSessionRecord();
+      }
       emit(
         state.copyWith(
           phase: SessionPhase.protected,
@@ -385,6 +443,7 @@ class SessionBloc extends Bloc<SessionEvent, SessionState> {
         raw.contains('error') ||
         raw.contains('exit')) {
       if (!_intended) {
+        await _finishSessionRecord();
         emit(
           state.copyWith(
             phase: SessionPhase.idle,

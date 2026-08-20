@@ -21,10 +21,18 @@ lib/
     onboarding/presentation/pages/
     session/
       domain/open_vpn_kill_switch.dart
+      domain/entities/exit_info.dart, session_record.dart
       domain/repositories/tunnel_repository.dart
+      domain/repositories/exit_ip_repository.dart
+      domain/repositories/session_history_repository.dart
       data/axe_vpn_tunnel_repository.dart
-      presentation/bloc/    # session_bloc + event/state (Freezed parts)
-      presentation/pages/home_page.dart
+      data/exit_ip_api.dart              # Retrofit client for ipwho.is
+      data/ip_who_is_exit_ip_repository.dart
+      data/prefs_session_history_repository.dart
+      data/models/ip_who_is_response.dart  # Freezed DTO for exit lookup
+      presentation/bloc/    # session + exit_check + history cubits
+      presentation/history_aggregates.dart
+      presentation/pages/  # home, connection_info, history
     locations/
       domain/entities/vpn_location.dart
       domain/open_vpn_remote.dart
@@ -47,6 +55,8 @@ Add **`features/subscription/`** and **`features/minutes/`** as new vertical sli
 - Kill switch + reconnect live in `SessionBloc` (`_intended`, backoff). Settings only dispatches events. Do not call `OpenVPN` from Settings.
 - Threat banner uses `connectivity_plus` path only (Wi‑Fi / cellular / none). Do **not** read SSID (would need location permission). Do **not** log probe hosts or destination IPs.
 - Location ping is TCP connect RTT via `ServerProbe` (`TcpServerProbe`). UI shows a bar + ms, never the host.
+- Exit check uses **HTTPS** (`AppConfig.exitIpBaseUrl` via Dio + Retrofit). Never Turbo-style plain HTTP ip-api. Do not log exit IPs.
+- Session history and favorites/recents are SharedPreferences only (on-device).
 - Cache-first locations: memory → SharedPreferences → network. Refresh on connect **timeout** once (`didRefreshOnFailure`).
 - iOS tunnel ids must stay in sync with `AppConfig.iosAppGroup` and `iosVpnExtensionBundleId`.
 
@@ -55,14 +65,15 @@ Add **`features/subscription/`** and **`features/minutes/`** as new vertical sli
 | Annotation | Output |
 |------------|--------|
 | `@freezed` | `*.freezed.dart` |
-| `@JsonSerializable` via Freezed | `vpn_location.g.dart` |
+| `@JsonSerializable` via Freezed | `vpn_location.g.dart`, `ip_who_is_response.g.dart` |
+| `@RestApi` (Retrofit) | `exit_ip_api.g.dart` |
 | `@RoutePage` / `AppRouter` | `router.gr.dart` |
 
-Do not hand-edit generated files.
+Do not hand-edit generated files. They are **gitignored** (`*.freezed.dart`, `*.g.dart`, `*.gr.dart`); run `dart run build_runner build` after clone or model/route changes.
 
 ## Stack (current)
 
-`flutter_bloc`, `freezed`, `get_it`, `auto_route`, `axevpn_flutter` ^2, `supabase_flutter`, `shared_preferences`, `connectivity_plus`, `google_fonts`, `cached_network_image`, `url_launcher`.
+`flutter_bloc`, `freezed`, `get_it`, `auto_route`, `axevpn_flutter` ^2, `supabase_flutter`, `shared_preferences`, `connectivity_plus`, `google_fonts`, `cached_network_image`, `url_launcher`, `fl_chart`, `dio`, `retrofit`.
 
 Swift Package Manager is **disabled** in `pubspec.yaml` because `axevpn_flutter` does not support it.
 

@@ -1,9 +1,11 @@
-# Shipped features — Cyber VPN
+# Features — Cyber VPN
 
 **Last updated:** 20 August 2026  
-Source of truth for **what the app does today**. Roadmap (not built): [STATUS.md](STATUS.md) and [PROJECT_PLAN.md](PROJECT_PLAN.md). Code layout: [ARCHITECTURE.md](ARCHITECTURE.md).
+Source of truth for **what the app does today** and **what to enrich next**. Gaps / P0 money: [STATUS.md](STATUS.md). Full product vision: [PROJECT_PLAN.md](PROJECT_PLAN.md). Code layout: [ARCHITECTURE.md](ARCHITECTURE.md).
 
 None of these log destination IPs, DNS queries, or payloads. Ping never shows a host.
+
+**Positioning filter:** prove “I’m protected on this hotel/cafe Wi‑Fi.” Skip Meshnet, password manager, streaming guarantees, destination browsing logs.
 
 ---
 
@@ -23,8 +25,17 @@ None of these log destination IPs, DNS queries, or payloads. Ping never shows a 
 | Protect ring | Tap to connect / disconnect the OpenVPN tunnel via `SessionBloc` → `TunnelRepository`. Connecting / Protected / idle. |
 | Session bootstrap | Home starts the session from the **current** location list (splash often finishes fetch before Home mounts). |
 | Location row | Shows selected city. Opens Locations. Premium cities are not connectable from here until IAP. |
+| Check connection | Opens Connection screen (HTTPS exit check). Also in app bar info icon. |
 | Go Premium | Opens static paywall (no store). |
 | Reconnect copy | Under the ring while reconnecting after a drop. |
+
+### Connection / exit check
+
+| | |
+|--|--|
+| What | Shows public **exit** IP, city, country, ISP after Protect. |
+| How | `ExitIpApi` (Dio + Retrofit) → `IpWhoIsExitIpRepository` → `https://ipwho.is/` (TLS). `ExitCheckCubit` on Connection page. User-triggered refresh. |
+| Not | Never plain HTTP `ip-api`. Do not persist or log the IP to our backend. Fail soft if offline / not protected path. |
 
 ### Threat banner
 
@@ -48,9 +59,12 @@ None of these log destination IPs, DNS queries, or payloads. Ping never shows a 
 
 | Feature | Details |
 |---------|---------|
-| List | Flag, city/country, Free vs Premium. Search by country, city, title. |
+| List | Flag, city/country, Free vs Premium. Tabs: **All** / **Favorites** / **Recent**. |
+| All | Flat searchable list (search by country, city, title). Star + ping on each row. |
+| Favorites | Starred IDs only (SharedPreferences). Empty copy if none. |
+| Recent | Last 5 free selections (when you pick a city). Own tab. |
 | Premium tap | Opens paywall route (no purchase). |
-| Free tap | Sets selected server on `SessionBloc` and pops back. |
+| Free tap | Sets selected server, remembers recent, pops back. |
 
 ### Ping bar
 
@@ -74,7 +88,17 @@ None of these log destination IPs, DNS queries, or payloads. Ping never shows a 
 | Always-on VPN (Android) | System setting. See **Kill switch vs Always-on** below. |
 | Block connections without VPN (Android) | System setting. See **Kill switch vs Always-on** below. |
 | Stay protected (iOS) | Copy only. Extension `tunPersist` + reconnect on Wi‑Fi or cellular. Full On Demand is later. |
+| Usage history | Settings → Usage history. Summary chips, 7-day animated chart, session list with relative bars. Clearable. |
+| Connection check | Settings shortcut to Connection page. |
 | Legal | Privacy / Terms links. |
+
+### Usage history
+
+| | |
+|--|--|
+| What | After Protect then disconnect (sessions ≥ ~3s), store city, start/end, ↓/↑ byte totals. UI: totals + last-7-days bar chart (`fl_chart`) + per-session relative data bar. |
+| How | `SessionHistoryRepository` in SharedPreferences (max 50). Written from `SessionBloc` when a protected session ends (byte deltas snapshotted **before** counters clear). |
+| Not | Not browsing history. Not DNS. Not uploaded. Old rows recorded before the byte fix may still show 0 B. |
 
 ---
 
@@ -162,6 +186,33 @@ iOS has no Always-on sheet like this. The extension keeps TUN and reconnects on 
 
 ---
 
-## Explicitly not shipped
+## Explicitly not shipped yet
 
-Subscriptions, minutes, ads, real IAP gate on premium cities, `PremiumGate` widget, goldens, Crashlytics, honest privacy URLs, split tunnel, widget, WireGuard / new fleet.
+Subscriptions, minutes, ads, real IAP gate on premium cities, Crashlytics, honest privacy URLs, WireGuard / new fleet.
+
+---
+
+## Enrichment roadmap (same doc)
+
+Keep enriching the product without becoming a Nord clone. Shipped Tier A items are documented above.
+
+### Tier A — done or next
+
+| Feature | Status | Why / privacy |
+|---------|--------|----------------|
+| Exit / connection check | **Shipped** | HTTPS only (`ipwho.is`). User-triggered. Do not log IP. Never plain HTTP ip-api. |
+| Favorites + recents | **Shipped** | IDs only in SharedPreferences; Locations tabs (All / Favorites / Recent). |
+| Session history | **Shipped** | On-device only. Charts + byte totals. No DNS/destinations. |
+| PremiumGate + goldens | **Next** | UI lock only until RevenueCat. |
+
+### Tier B — later
+
+Split tunnel (Android; conflicts with Block-without-VPN), home widget, auto best-ping, in-app review once, protected/dropped notifications.
+
+### Tier C / D
+
+Store trust, Crashlytics; WireGuard/fleet = V2. No UXCam / TLS bypass / “military grade.”
+
+### Build order
+
+Exit check → favorites/recents → session history → **PremiumGate/goldens** → money loop when owner asks → Tier B.

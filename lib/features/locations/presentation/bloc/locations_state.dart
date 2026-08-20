@@ -9,6 +9,8 @@ sealed class LocationsState with _$LocationsState {
     VpnCredentials? credentials,
     @Default('') String query,
     @Default(<int, int?>{}) Map<int, int?> rttMs,
+    @Default(<int>[]) List<int> favoriteIds,
+    @Default(<int>[]) List<int> recentIds,
   }) = LocationsLoaded;
   const factory LocationsState.failure(String message) = LocationsFailure;
 }

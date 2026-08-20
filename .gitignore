@@ -33,6 +33,11 @@ migrate_working_dir/
 /build/
 /coverage/
 
+# Codegen (Freezed, json_serializable, Retrofit, auto_route)
+*.freezed.dart
+*.g.dart
+*.gr.dart
+
 # Symbolication related
 app.*.symbols
 

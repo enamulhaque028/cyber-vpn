@@ -1,26 +1,48 @@
 import 'dart:async';
+import 'dart:convert';
 
+import 'package:cyber_vpn/core/config/app_config.dart';
 import 'package:cyber_vpn/features/locations/domain/entities/vpn_location.dart';
 import 'package:cyber_vpn/features/locations/domain/repositories/locations_repository.dart';
 import 'package:cyber_vpn/features/locations/domain/repositories/server_probe.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 part 'locations_bloc.freezed.dart';
 part 'locations_event.dart';
 part 'locations_state.dart';
 
 class LocationsBloc extends Bloc<LocationsEvent, LocationsState> {
-  LocationsBloc(this._repository, this._probe)
+  LocationsBloc(this._repository, this._probe, this._prefs)
     : super(const LocationsState.loading()) {
     on<LocationsStarted>(_onStarted);
     on<LocationsQueryChanged>(_onQuery);
     on<LocationsRttMeasured>(_onRtt);
+    on<LocationsFavoriteToggled>(_onFavorite);
+    on<LocationsRecentRemembered>(_onRecent);
   }
 
   final LocationsRepository _repository;
   final ServerProbe _probe;
+  final SharedPreferences _prefs;
   int _probeEpoch = 0;
+
+  List<int> _readIds(String key) {
+    final raw = _prefs.getString(key);
+    if (raw == null || raw.isEmpty) return [];
+    try {
+      return (jsonDecode(raw) as List)
+          .map((e) => (e as num).toInt())
+          .toList();
+    } catch (_) {
+      return [];
+    }
+  }
+
+  Future<void> _writeIds(String key, List<int> ids) async {
+    await _prefs.setString(key, jsonEncode(ids));
+  }
 
   Future<void> _onStarted(
     LocationsStarted event,
@@ -35,7 +57,13 @@ class LocationsBloc extends Bloc<LocationsEvent, LocationsState> {
         forceRefresh: event.forceRefresh,
       );
       emit(
-        LocationsState.loaded(all: all, visible: all, credentials: credentials),
+        LocationsState.loaded(
+          all: all,
+          visible: all,
+          credentials: credentials,
+          favoriteIds: _readIds(AppConfig.prefsFavoriteServerIds),
+          recentIds: _readIds(AppConfig.prefsRecentServerIds),
+        ),
       );
       unawaited(_probeAll(all));
     } catch (e) {
@@ -68,6 +96,37 @@ class LocationsBloc extends Bloc<LocationsEvent, LocationsState> {
         rttMs: {...current.rttMs, event.id: event.milliseconds},
       ),
     );
+  }
+
+  Future<void> _onFavorite(
+    LocationsFavoriteToggled event,
+    Emitter<LocationsState> emit,
+  ) async {
+    final current = state;
+    if (current is! LocationsLoaded) return;
+    final next = [...current.favoriteIds];
+    if (next.contains(event.id)) {
+      next.remove(event.id);
+    } else {
+      next.insert(0, event.id);
+    }
+    await _writeIds(AppConfig.prefsFavoriteServerIds, next);
+    emit(current.copyWith(favoriteIds: next));
+  }
+
+  Future<void> _onRecent(
+    LocationsRecentRemembered event,
+    Emitter<LocationsState> emit,
+  ) async {
+    final current = state;
+    final base = current is LocationsLoaded
+        ? current.recentIds
+        : _readIds(AppConfig.prefsRecentServerIds);
+    final next = [event.id, ...base.where((e) => e != event.id)].take(5).toList();
+    await _writeIds(AppConfig.prefsRecentServerIds, next);
+    if (current is LocationsLoaded) {
+      emit(current.copyWith(recentIds: next));
+    }
   }
 
   Future<void> _probeAll(List<VpnLocation> all) async {

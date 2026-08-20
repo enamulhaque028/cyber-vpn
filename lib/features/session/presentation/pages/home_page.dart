@@ -56,6 +56,11 @@ class _HomePageState extends State<HomePage> {
         ),
         actions: [
           IconButton(
+            tooltip: 'Connection',
+            onPressed: () => context.router.push(const ConnectionInfoRoute()),
+            icon: const Icon(Icons.info_outline_rounded),
+          ),
+          IconButton(
             onPressed: () => context.router.push(const SettingsRoute()),
             icon: const Icon(Icons.tune_rounded),
           ),
@@ -178,6 +183,13 @@ class _HomePageState extends State<HomePage> {
                     },
                   ),
                   const SizedBox(height: 12),
+                  ClButton(
+                    label: 'Check connection',
+                    variant: ClButtonVariant.ghost,
+                    onPressed: () =>
+                        context.router.push(const ConnectionInfoRoute()),
+                  ),
+                  const SizedBox(height: 8),
                   ClButton(
                     label: 'Go Premium',
                     variant: ClButtonVariant.ghost,
