@@ -29,7 +29,19 @@ class StatsTicker extends StatelessWidget {
       decoration: BoxDecoration(
         color: scheme.surfaceContainerHighest,
         borderRadius: BorderRadius.circular(AppRadii.sm),
-        border: Border.all(color: scheme.outline.withValues(alpha: 0.6)),
+        border: Border.all(
+          color: active
+              ? scheme.primary.withValues(alpha: 0.35)
+              : scheme.outline.withValues(alpha: 0.6),
+        ),
+        boxShadow: active
+            ? [
+                BoxShadow(
+                  color: scheme.primary.withValues(alpha: 0.12),
+                  blurRadius: 12,
+                ),
+              ]
+            : null,
       ),
       child: Row(
         children: [

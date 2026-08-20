@@ -103,6 +103,7 @@ class _HomePageState extends State<HomePage> {
                       };
                       return ConnectRing(
                         phase: phase,
+                        locationLabel: session.selected?.displayName,
                         onPressed: () {
                           final bloc = context.read<SessionBloc>();
                           if (session.phase == SessionPhase.protected ||
@@ -120,12 +121,15 @@ class _HomePageState extends State<HomePage> {
                     builder: (context, session) {
                       final subtitle = switch (session.phase) {
                         SessionPhase.protected => 'This device is protected',
-                        SessionPhase.connecting =>
-                          session.message ?? 'Connecting…',
+                        // ConnectRing already shows "Connecting" under the crest.
+                        SessionPhase.connecting => '',
                         SessionPhase.failed =>
                           session.message ?? 'Could not connect',
                         SessionPhase.idle => 'Tap to protect this device',
                       };
+                      if (subtitle.isEmpty) {
+                        return const SizedBox(height: 22);
+                      }
                       return Text(
                         subtitle,
                         textAlign: TextAlign.center,

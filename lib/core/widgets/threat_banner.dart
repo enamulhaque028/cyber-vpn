@@ -53,20 +53,44 @@ class ThreatBanner extends StatelessWidget {
       ),
     };
 
-    return Container(
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 420),
+      curve: Curves.fastOutSlowIn,
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
         color: scheme.surfaceContainerHighest,
         borderRadius: BorderRadius.circular(AppRadii.md),
-        border: Border.all(color: accent.withValues(alpha: 0.45)),
+        border: Border.all(
+          color: accent.withValues(alpha: protected ? 0.9 : 0.45),
+          width: protected ? 1.4 : 1,
+        ),
+        boxShadow: protected
+            ? [
+                BoxShadow(
+                  color: accent.withValues(alpha: 0.28),
+                  blurRadius: 16,
+                  spreadRadius: 0,
+                ),
+              ]
+            : null,
       ),
       child: Row(
         children: [
           Icon(icon, color: accent, size: 20),
           const SizedBox(width: 10),
           Expanded(
-            child: Text(message, style: Theme.of(context).textTheme.bodyMedium),
+            child: AnimatedDefaultTextStyle(
+              duration: const Duration(milliseconds: 320),
+              curve: Curves.fastOutSlowIn,
+              style:
+                  Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: scheme.onSurface,
+                    fontWeight: protected ? FontWeight.w600 : FontWeight.w400,
+                  ) ??
+                  const TextStyle(),
+              child: Text(message),
+            ),
           ),
         ],
       ),

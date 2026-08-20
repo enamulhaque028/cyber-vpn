@@ -24,6 +24,7 @@ dependencies:
   fl_chart: ^1.2.0
   dio: ^5.11.0
   retrofit: ^4.10.0
+  flutter_svg: ^2.3.0
 
 dev_dependencies:
   flutter_test:
@@ -37,5 +38,7 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  assets:
+    - assets/icons/
   config:
     enable-swift-package-manager: false

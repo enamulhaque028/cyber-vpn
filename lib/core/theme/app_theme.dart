@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 abstract final class AppTheme {
-  static ThemeData dark() => _build(AppColors.dark, const Color(0xFF0B0D12));
+  static ThemeData dark() => _build(AppColors.dark, const Color(0xFF03080F));
 
   static ThemeData light() => _build(AppColors.light, const Color(0xFFF4F6FA));
 
