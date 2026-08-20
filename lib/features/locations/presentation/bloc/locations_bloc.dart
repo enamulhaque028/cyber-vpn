@@ -1,5 +1,8 @@
+import 'dart:async';
+
 import 'package:cyber_vpn/features/locations/domain/entities/vpn_location.dart';
 import 'package:cyber_vpn/features/locations/domain/repositories/locations_repository.dart';
+import 'package:cyber_vpn/features/locations/domain/repositories/server_probe.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 
@@ -8,12 +11,16 @@ part 'locations_event.dart';
 part 'locations_state.dart';
 
 class LocationsBloc extends Bloc<LocationsEvent, LocationsState> {
-  LocationsBloc(this._repository) : super(const LocationsState.loading()) {
+  LocationsBloc(this._repository, this._probe)
+    : super(const LocationsState.loading()) {
     on<LocationsStarted>(_onStarted);
     on<LocationsQueryChanged>(_onQuery);
+    on<LocationsRttMeasured>(_onRtt);
   }
 
   final LocationsRepository _repository;
+  final ServerProbe _probe;
+  int _probeEpoch = 0;
 
   Future<void> _onStarted(
     LocationsStarted event,
@@ -30,6 +37,7 @@ class LocationsBloc extends Bloc<LocationsEvent, LocationsState> {
       emit(
         LocationsState.loaded(all: all, visible: all, credentials: credentials),
       );
+      unawaited(_probeAll(all));
     } catch (e) {
       emit(LocationsState.failure(e.toString()));
     }
@@ -50,5 +58,33 @@ class LocationsBloc extends Bloc<LocationsEvent, LocationsState> {
               )
               .toList();
     emit(current.copyWith(visible: visible, query: event.query));
+  }
+
+  void _onRtt(LocationsRttMeasured event, Emitter<LocationsState> emit) {
+    final current = state;
+    if (current is! LocationsLoaded) return;
+    emit(
+      current.copyWith(
+        rttMs: {...current.rttMs, event.id: event.milliseconds},
+      ),
+    );
+  }
+
+  Future<void> _probeAll(List<VpnLocation> all) async {
+    final epoch = ++_probeEpoch;
+    var next = 0;
+    Future<void> worker() async {
+      while (true) {
+        if (epoch != _probeEpoch || isClosed) return;
+        final index = next++;
+        if (index >= all.length) return;
+        final loc = all[index];
+        final ms = await _probe.measureMs(loc.config);
+        if (epoch != _probeEpoch || isClosed) return;
+        add(LocationsEvent.rttMeasured(loc.id, ms));
+      }
+    }
+
+    await Future.wait(List.generate(4, (_) => worker()));
   }
 }

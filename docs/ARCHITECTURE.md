@@ -16,7 +16,7 @@ lib/
     config/app_config.dart
     json.dart               # jsonInt / jsonString / jsonBool helpers
     theme/
-    widgets/                # ClButton, ConnectRing, ThreatBanner
+    widgets/                # ClButton, ConnectRing, ThreatBanner, StatsTicker, PingBar
   features/
     onboarding/presentation/pages/
     session/
@@ -27,8 +27,11 @@ lib/
       presentation/pages/home_page.dart
     locations/
       domain/entities/vpn_location.dart
+      domain/open_vpn_remote.dart
       domain/repositories/locations_repository.dart
+      domain/repositories/server_probe.dart
       data/supabase_locations_repository.dart
+      data/tcp_server_probe.dart
       presentation/
     settings/               # ThemeCubit; paywall page currently lives here (move to subscription/)
 ```
@@ -42,6 +45,8 @@ Add **`features/subscription/`** and **`features/minutes/`** as new vertical sli
 - Session is the only tunnel source of truth (`SessionBloc`). Locations listen; they do not keep a second `vpnInfo`.
 - Home must start the session from the **current** `LocationsBloc` state (splash often finishes fetch before Home mounts).
 - Kill switch + reconnect live in `SessionBloc` (`_intended`, backoff). Settings only dispatches events. Do not call `OpenVPN` from Settings.
+- Threat banner uses `connectivity_plus` path only (Wi‑Fi / cellular / none). Do **not** read SSID (would need location permission). Do **not** log probe hosts or destination IPs.
+- Location ping is TCP connect RTT via `ServerProbe` (`TcpServerProbe`). UI shows a bar + ms, never the host.
 - Cache-first locations: memory → SharedPreferences → network. Refresh on connect **timeout** once (`didRefreshOnFailure`).
 - iOS tunnel ids must stay in sync with `AppConfig.iosAppGroup` and `iosVpnExtensionBundleId`.
 

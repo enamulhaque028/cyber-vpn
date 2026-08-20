@@ -19,7 +19,8 @@ sealed class SessionEvent with _$SessionEvent {
   const factory SessionEvent.connectTimedOut() = SessionConnectTimedOut;
   const factory SessionEvent.killSwitchChanged(bool enabled) =
       SessionKillSwitchChanged;
-  const factory SessionEvent.networkPathChanged() = SessionNetworkPathChanged;
+  const factory SessionEvent.networkPathChanged(NetworkKind kind) =
+      SessionNetworkPathChanged;
   const factory SessionEvent.openSystemVpnSettings() =
       SessionOpenSystemVpnSettings;
 }

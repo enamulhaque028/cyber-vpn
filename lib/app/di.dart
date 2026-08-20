@@ -1,6 +1,8 @@
 import 'package:cyber_vpn/app/router.dart';
 import 'package:cyber_vpn/features/locations/data/supabase_locations_repository.dart';
+import 'package:cyber_vpn/features/locations/data/tcp_server_probe.dart';
 import 'package:cyber_vpn/features/locations/domain/repositories/locations_repository.dart';
+import 'package:cyber_vpn/features/locations/domain/repositories/server_probe.dart';
 import 'package:cyber_vpn/features/locations/presentation/bloc/locations_bloc.dart';
 import 'package:cyber_vpn/features/session/data/axe_vpn_tunnel_repository.dart';
 import 'package:cyber_vpn/features/session/domain/repositories/tunnel_repository.dart';
@@ -20,9 +22,10 @@ Future<void> configureDependencies() async {
     ..registerLazySingleton<LocationsRepository>(
       () => SupabaseLocationsRepository(getIt()),
     )
+    ..registerLazySingleton<ServerProbe>(TcpServerProbe.new)
     ..registerLazySingleton<TunnelRepository>(AxeVpnTunnelRepository.new)
     ..registerFactory(() => ThemeCubit(getIt()))
-    ..registerFactory(() => LocationsBloc(getIt()))
+    ..registerFactory(() => LocationsBloc(getIt(), getIt()))
     ..registerFactory(
       () => SessionBloc(
         getIt<TunnelRepository>(),

@@ -55,12 +55,13 @@ extension LocationsEventPatterns on LocationsEvent {
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeMap<TResult extends Object?>({TResult Function( LocationsStarted value)?  started,TResult Function( LocationsQueryChanged value)?  queryChanged,required TResult orElse(),}){
+@optionalTypeArgs TResult maybeMap<TResult extends Object?>({TResult Function( LocationsStarted value)?  started,TResult Function( LocationsQueryChanged value)?  queryChanged,TResult Function( LocationsRttMeasured value)?  rttMeasured,required TResult orElse(),}){
 final _that = this;
 switch (_that) {
 case LocationsStarted() when started != null:
 return started(_that);case LocationsQueryChanged() when queryChanged != null:
-return queryChanged(_that);case _:
+return queryChanged(_that);case LocationsRttMeasured() when rttMeasured != null:
+return rttMeasured(_that);case _:
   return orElse();
 
 }
@@ -78,12 +79,13 @@ return queryChanged(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult map<TResult extends Object?>({required TResult Function( LocationsStarted value)  started,required TResult Function( LocationsQueryChanged value)  queryChanged,}){
+@optionalTypeArgs TResult map<TResult extends Object?>({required TResult Function( LocationsStarted value)  started,required TResult Function( LocationsQueryChanged value)  queryChanged,required TResult Function( LocationsRttMeasured value)  rttMeasured,}){
 final _that = this;
 switch (_that) {
 case LocationsStarted():
 return started(_that);case LocationsQueryChanged():
-return queryChanged(_that);}
+return queryChanged(_that);case LocationsRttMeasured():
+return rttMeasured(_that);}
 }
 /// A variant of `map` that fallback to returning `null`.
 ///
@@ -97,12 +99,13 @@ return queryChanged(_that);}
 /// }
 /// ```
 
-@optionalTypeArgs TResult? mapOrNull<TResult extends Object?>({TResult? Function( LocationsStarted value)?  started,TResult? Function( LocationsQueryChanged value)?  queryChanged,}){
+@optionalTypeArgs TResult? mapOrNull<TResult extends Object?>({TResult? Function( LocationsStarted value)?  started,TResult? Function( LocationsQueryChanged value)?  queryChanged,TResult? Function( LocationsRttMeasured value)?  rttMeasured,}){
 final _that = this;
 switch (_that) {
 case LocationsStarted() when started != null:
 return started(_that);case LocationsQueryChanged() when queryChanged != null:
-return queryChanged(_that);case _:
+return queryChanged(_that);case LocationsRttMeasured() when rttMeasured != null:
+return rttMeasured(_that);case _:
   return null;
 
 }
@@ -119,11 +122,12 @@ return queryChanged(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>({TResult Function( bool forceRefresh)?  started,TResult Function( String query)?  queryChanged,required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>({TResult Function( bool forceRefresh)?  started,TResult Function( String query)?  queryChanged,TResult Function( int id,  int? milliseconds)?  rttMeasured,required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case LocationsStarted() when started != null:
 return started(_that.forceRefresh);case LocationsQueryChanged() when queryChanged != null:
-return queryChanged(_that.query);case _:
+return queryChanged(_that.query);case LocationsRttMeasured() when rttMeasured != null:
+return rttMeasured(_that.id,_that.milliseconds);case _:
   return orElse();
 
 }
@@ -141,11 +145,12 @@ return queryChanged(_that.query);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>({required TResult Function( bool forceRefresh)  started,required TResult Function( String query)  queryChanged,}) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>({required TResult Function( bool forceRefresh)  started,required TResult Function( String query)  queryChanged,required TResult Function( int id,  int? milliseconds)  rttMeasured,}) {final _that = this;
 switch (_that) {
 case LocationsStarted():
 return started(_that.forceRefresh);case LocationsQueryChanged():
-return queryChanged(_that.query);}
+return queryChanged(_that.query);case LocationsRttMeasured():
+return rttMeasured(_that.id,_that.milliseconds);}
 }
 /// A variant of `when` that fallback to returning `null`
 ///
@@ -159,11 +164,12 @@ return queryChanged(_that.query);}
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>({TResult? Function( bool forceRefresh)?  started,TResult? Function( String query)?  queryChanged,}) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>({TResult? Function( bool forceRefresh)?  started,TResult? Function( String query)?  queryChanged,TResult? Function( int id,  int? milliseconds)?  rttMeasured,}) {final _that = this;
 switch (_that) {
 case LocationsStarted() when started != null:
 return started(_that.forceRefresh);case LocationsQueryChanged() when queryChanged != null:
-return queryChanged(_that.query);case _:
+return queryChanged(_that.query);case LocationsRttMeasured() when rttMeasured != null:
+return rttMeasured(_that.id,_that.milliseconds);case _:
   return null;
 
 }
@@ -304,6 +310,74 @@ as String,
 }
 
 /// @nodoc
+
+
+class LocationsRttMeasured implements LocationsEvent {
+  const LocationsRttMeasured(this.id, this.milliseconds);
+  
+
+ final  int id;
+ final  int? milliseconds;
+
+/// Create a copy of LocationsEvent
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$LocationsRttMeasuredCopyWith<LocationsRttMeasured> get copyWith => _$LocationsRttMeasuredCopyWithImpl<LocationsRttMeasured>(this, _$identity);
+
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is LocationsRttMeasured&&(identical(other.id, id) || other.id == id)&&(identical(other.milliseconds, milliseconds) || other.milliseconds == milliseconds));
+}
+
+
+@override
+int get hashCode => Object.hash(runtimeType,id,milliseconds);
+
+@override
+String toString() {
+  return 'LocationsEvent.rttMeasured(id: $id, milliseconds: $milliseconds)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $LocationsRttMeasuredCopyWith<$Res> implements $LocationsEventCopyWith<$Res> {
+  factory $LocationsRttMeasuredCopyWith(LocationsRttMeasured value, $Res Function(LocationsRttMeasured) _then) = _$LocationsRttMeasuredCopyWithImpl;
+@useResult
+$Res call({
+ int id, int? milliseconds
+});
+
+
+
+
+}
+/// @nodoc
+class _$LocationsRttMeasuredCopyWithImpl<$Res>
+    implements $LocationsRttMeasuredCopyWith<$Res> {
+  _$LocationsRttMeasuredCopyWithImpl(this._self, this._then);
+
+  final LocationsRttMeasured _self;
+  final $Res Function(LocationsRttMeasured) _then;
+
+/// Create a copy of LocationsEvent
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') $Res call({Object? id = null,Object? milliseconds = freezed,}) {
+  return _then(LocationsRttMeasured(
+null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
+as int,freezed == milliseconds ? _self.milliseconds : milliseconds // ignore: cast_nullable_to_non_nullable
+as int?,
+  ));
+}
+
+
+}
+
+/// @nodoc
 mixin _$LocationsState {
 
 
@@ -414,11 +488,11 @@ return failure(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>({TResult Function()?  loading,TResult Function( List<VpnLocation> all,  List<VpnLocation> visible,  VpnCredentials? credentials,  String query)?  loaded,TResult Function( String message)?  failure,required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>({TResult Function()?  loading,TResult Function( List<VpnLocation> all,  List<VpnLocation> visible,  VpnCredentials? credentials,  String query,  Map<int, int?> rttMs)?  loaded,TResult Function( String message)?  failure,required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case LocationsLoading() when loading != null:
 return loading();case LocationsLoaded() when loaded != null:
-return loaded(_that.all,_that.visible,_that.credentials,_that.query);case LocationsFailure() when failure != null:
+return loaded(_that.all,_that.visible,_that.credentials,_that.query,_that.rttMs);case LocationsFailure() when failure != null:
 return failure(_that.message);case _:
   return orElse();
 
@@ -437,11 +511,11 @@ return failure(_that.message);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>({required TResult Function()  loading,required TResult Function( List<VpnLocation> all,  List<VpnLocation> visible,  VpnCredentials? credentials,  String query)  loaded,required TResult Function( String message)  failure,}) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>({required TResult Function()  loading,required TResult Function( List<VpnLocation> all,  List<VpnLocation> visible,  VpnCredentials? credentials,  String query,  Map<int, int?> rttMs)  loaded,required TResult Function( String message)  failure,}) {final _that = this;
 switch (_that) {
 case LocationsLoading():
 return loading();case LocationsLoaded():
-return loaded(_that.all,_that.visible,_that.credentials,_that.query);case LocationsFailure():
+return loaded(_that.all,_that.visible,_that.credentials,_that.query,_that.rttMs);case LocationsFailure():
 return failure(_that.message);}
 }
 /// A variant of `when` that fallback to returning `null`
@@ -456,11 +530,11 @@ return failure(_that.message);}
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>({TResult? Function()?  loading,TResult? Function( List<VpnLocation> all,  List<VpnLocation> visible,  VpnCredentials? credentials,  String query)?  loaded,TResult? Function( String message)?  failure,}) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>({TResult? Function()?  loading,TResult? Function( List<VpnLocation> all,  List<VpnLocation> visible,  VpnCredentials? credentials,  String query,  Map<int, int?> rttMs)?  loaded,TResult? Function( String message)?  failure,}) {final _that = this;
 switch (_that) {
 case LocationsLoading() when loading != null:
 return loading();case LocationsLoaded() when loaded != null:
-return loaded(_that.all,_that.visible,_that.credentials,_that.query);case LocationsFailure() when failure != null:
+return loaded(_that.all,_that.visible,_that.credentials,_that.query,_that.rttMs);case LocationsFailure() when failure != null:
 return failure(_that.message);case _:
   return null;
 
@@ -505,7 +579,7 @@ String toString() {
 
 
 class LocationsLoaded implements LocationsState {
-  const LocationsLoaded({required final  List<VpnLocation> all, required final  List<VpnLocation> visible, this.credentials, this.query = ''}): _all = all,_visible = visible;
+  const LocationsLoaded({required final  List<VpnLocation> all, required final  List<VpnLocation> visible, this.credentials, this.query = '', final  Map<int, int?> rttMs = const <int, int?>{}}): _all = all,_visible = visible,_rttMs = rttMs;
   
 
  final  List<VpnLocation> _all;
@@ -524,6 +598,13 @@ class LocationsLoaded implements LocationsState {
 
  final  VpnCredentials? credentials;
 @JsonKey() final  String query;
+ final  Map<int, int?> _rttMs;
+@JsonKey() Map<int, int?> get rttMs {
+  if (_rttMs is EqualUnmodifiableMapView) return _rttMs;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableMapView(_rttMs);
+}
+
 
 /// Create a copy of LocationsState
 /// with the given fields replaced by the non-null parameter values.
@@ -535,16 +616,16 @@ $LocationsLoadedCopyWith<LocationsLoaded> get copyWith => _$LocationsLoadedCopyW
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is LocationsLoaded&&const DeepCollectionEquality().equals(other._all, _all)&&const DeepCollectionEquality().equals(other._visible, _visible)&&(identical(other.credentials, credentials) || other.credentials == credentials)&&(identical(other.query, query) || other.query == query));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is LocationsLoaded&&const DeepCollectionEquality().equals(other._all, _all)&&const DeepCollectionEquality().equals(other._visible, _visible)&&(identical(other.credentials, credentials) || other.credentials == credentials)&&(identical(other.query, query) || other.query == query)&&const DeepCollectionEquality().equals(other._rttMs, _rttMs));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_all),const DeepCollectionEquality().hash(_visible),credentials,query);
+int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_all),const DeepCollectionEquality().hash(_visible),credentials,query,const DeepCollectionEquality().hash(_rttMs));
 
 @override
 String toString() {
-  return 'LocationsState.loaded(all: $all, visible: $visible, credentials: $credentials, query: $query)';
+  return 'LocationsState.loaded(all: $all, visible: $visible, credentials: $credentials, query: $query, rttMs: $rttMs)';
 }
 
 
@@ -555,7 +636,7 @@ abstract mixin class $LocationsLoadedCopyWith<$Res> implements $LocationsStateCo
   factory $LocationsLoadedCopyWith(LocationsLoaded value, $Res Function(LocationsLoaded) _then) = _$LocationsLoadedCopyWithImpl;
 @useResult
 $Res call({
- List<VpnLocation> all, List<VpnLocation> visible, VpnCredentials? credentials, String query
+ List<VpnLocation> all, List<VpnLocation> visible, VpnCredentials? credentials, String query, Map<int, int?> rttMs
 });
 
 
@@ -572,13 +653,14 @@ class _$LocationsLoadedCopyWithImpl<$Res>
 
 /// Create a copy of LocationsState
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') $Res call({Object? all = null,Object? visible = null,Object? credentials = freezed,Object? query = null,}) {
+@pragma('vm:prefer-inline') $Res call({Object? all = null,Object? visible = null,Object? credentials = freezed,Object? query = null,Object? rttMs = null,}) {
   return _then(LocationsLoaded(
 all: null == all ? _self._all : all // ignore: cast_nullable_to_non_nullable
 as List<VpnLocation>,visible: null == visible ? _self._visible : visible // ignore: cast_nullable_to_non_nullable
 as List<VpnLocation>,credentials: freezed == credentials ? _self.credentials : credentials // ignore: cast_nullable_to_non_nullable
 as VpnCredentials?,query: null == query ? _self.query : query // ignore: cast_nullable_to_non_nullable
-as String,
+as String,rttMs: null == rttMs ? _self._rttMs : rttMs // ignore: cast_nullable_to_non_nullable
+as Map<int, int?>,
   ));
 }
 

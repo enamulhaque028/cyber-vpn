@@ -6,4 +6,6 @@ sealed class LocationsEvent with _$LocationsEvent {
       LocationsStarted;
   const factory LocationsEvent.queryChanged(String query) =
       LocationsQueryChanged;
+  const factory LocationsEvent.rttMeasured(int id, int? milliseconds) =
+      LocationsRttMeasured;
 }

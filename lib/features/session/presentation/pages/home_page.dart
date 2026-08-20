@@ -3,6 +3,7 @@ import 'package:cyber_vpn/app/router.dart';
 import 'package:cyber_vpn/core/config/app_config.dart';
 import 'package:cyber_vpn/core/widgets/cl_button.dart';
 import 'package:cyber_vpn/core/widgets/connect_ring.dart';
+import 'package:cyber_vpn/core/widgets/stats_ticker.dart';
 import 'package:cyber_vpn/core/widgets/threat_banner.dart';
 import 'package:cyber_vpn/features/locations/presentation/bloc/locations_bloc.dart';
 import 'package:cyber_vpn/features/session/presentation/bloc/session_bloc.dart';
@@ -77,8 +78,15 @@ class _HomePageState extends State<HomePage> {
               padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
               child: Column(
                 children: [
-                  const ThreatBanner(
-                    message: 'Untrusted networks are safer with a tunnel on.',
+                  BlocBuilder<SessionBloc, SessionState>(
+                    buildWhen: (p, n) =>
+                        p.networkKind != n.networkKind || p.phase != n.phase,
+                    builder: (context, session) {
+                      return ThreatBanner(
+                        kind: session.networkKind,
+                        protected: session.phase == SessionPhase.protected,
+                      );
+                    },
                   ),
                   const Spacer(),
                   BlocBuilder<SessionBloc, SessionState>(
@@ -106,7 +114,7 @@ class _HomePageState extends State<HomePage> {
                   BlocBuilder<SessionBloc, SessionState>(
                     builder: (context, session) {
                       final subtitle = switch (session.phase) {
-                        SessionPhase.protected => session.duration,
+                        SessionPhase.protected => 'This device is protected',
                         SessionPhase.connecting =>
                           session.message ?? 'Connecting…',
                         SessionPhase.failed =>
@@ -122,6 +130,22 @@ class _HomePageState extends State<HomePage> {
                               : scheme.secondary,
                           fontFeatures: const [FontFeature.tabularFigures()],
                         ),
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                  BlocBuilder<SessionBloc, SessionState>(
+                    buildWhen: (p, n) =>
+                        p.duration != n.duration ||
+                        p.downRate != n.downRate ||
+                        p.upRate != n.upRate ||
+                        p.phase != n.phase,
+                    builder: (context, session) {
+                      return StatsTicker(
+                        duration: session.duration,
+                        downRate: session.downRate,
+                        upRate: session.upRate,
+                        active: session.phase == SessionPhase.protected,
                       );
                     },
                   ),

@@ -1,6 +1,7 @@
 import 'package:auto_route/auto_route.dart';
-import 'package:cyber_vpn/app/router.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:cyber_vpn/app/router.dart';
+import 'package:cyber_vpn/core/widgets/ping_bar.dart';
 import 'package:cyber_vpn/features/locations/presentation/bloc/locations_bloc.dart';
 import 'package:cyber_vpn/features/session/presentation/bloc/session_bloc.dart';
 import 'package:flutter/material.dart';
@@ -39,11 +40,13 @@ class LocationsPage extends StatelessWidget {
                   LocationsFailure(:final message) => Center(
                     child: Text(message),
                   ),
-                  LocationsLoaded(:final visible) => ListView.separated(
+                  LocationsLoaded(:final visible, :final rttMs) =>
+                    ListView.separated(
                     itemCount: visible.length,
                     separatorBuilder: (_, _) => const Divider(height: 1),
                     itemBuilder: (context, index) {
                       final loc = visible[index];
+                      final probed = rttMs.containsKey(loc.id);
                       return ListTile(
                         leading: loc.networkFlagUrl.isEmpty
                             ? const Icon(Icons.flag_outlined)
@@ -57,9 +60,19 @@ class LocationsPage extends StatelessWidget {
                               ),
                         title: Text(loc.displayName),
                         subtitle: Text(loc.isPremium ? 'Premium' : 'Free'),
-                        trailing: loc.isPremium
-                            ? const Icon(Icons.lock_outline, size: 18)
-                            : null,
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            PingBar(
+                              loading: !probed,
+                              milliseconds: rttMs[loc.id],
+                            ),
+                            if (loc.isPremium) ...[
+                              const SizedBox(width: 8),
+                              const Icon(Icons.lock_outline, size: 18),
+                            ],
+                          ],
+                        ),
                         onTap: () {
                           if (loc.isPremium) {
                             context.router.push(const PaywallRoute());

@@ -2,7 +2,7 @@
 
 Implementation of the product in [docs/PROJECT_PLAN.md](docs/PROJECT_PLAN.md).
 
-**Agents:** start at [docs/README.md](docs/README.md), then [docs/STATUS.md](docs/STATUS.md).
+**Agents:** start at [docs/README.md](docs/README.md), then [docs/STATUS.md](docs/STATUS.md). Shipped features: [docs/FEATURES.md](docs/FEATURES.md).
 
 Flutter VPN client. Features are vertical slices (`domain` / `data` / `presentation`).
 

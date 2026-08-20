@@ -3,8 +3,10 @@ import 'dart:math';
 
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:cyber_vpn/core/config/app_config.dart';
+import 'package:cyber_vpn/core/utils/traffic_format.dart';
 import 'package:cyber_vpn/features/locations/domain/entities/vpn_location.dart';
 import 'package:cyber_vpn/features/locations/domain/repositories/locations_repository.dart';
+import 'package:cyber_vpn/features/session/domain/network_kind.dart';
 import 'package:cyber_vpn/features/session/domain/repositories/tunnel_repository.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
@@ -48,6 +50,22 @@ class SessionBloc extends Bloc<SessionEvent, SessionState> {
   Timer? _connectTimer;
   Timer? _reconnectTimer;
   StreamSubscription<List<ConnectivityResult>>? _pathSub;
+  int? _lastBytesIn;
+  int? _lastBytesOut;
+  DateTime? _lastBytesAt;
+
+  static NetworkKind kindFrom(List<ConnectivityResult> results) {
+    if (results.isEmpty ||
+        (results.length == 1 && results.first == ConnectivityResult.none)) {
+      return NetworkKind.none;
+    }
+    if (results.contains(ConnectivityResult.wifi)) return NetworkKind.wifi;
+    if (results.contains(ConnectivityResult.mobile) ||
+        results.contains(ConnectivityResult.ethernet)) {
+      return NetworkKind.cellular;
+    }
+    return NetworkKind.other;
+  }
 
   @override
   Future<void> close() {
@@ -68,8 +86,8 @@ class SessionBloc extends Bloc<SessionEvent, SessionState> {
   }
 
   void _listenToPath() {
-    _pathSub ??= _connectivity.onConnectivityChanged.listen((_) {
-      add(const SessionEvent.networkPathChanged());
+    _pathSub ??= _connectivity.onConnectivityChanged.listen((results) {
+      add(SessionEvent.networkPathChanged(kindFrom(results)));
     });
   }
 
@@ -78,6 +96,10 @@ class SessionBloc extends Bloc<SessionEvent, SessionState> {
     Emitter<SessionState> emit,
   ) async {
     _listenToPath();
+    try {
+      final path = await _connectivity.checkConnectivity();
+      emit(state.copyWith(networkKind: kindFrom(path)));
+    } catch (_) {}
     try {
       await _ensureTunnel();
     } catch (e) {
@@ -255,6 +277,9 @@ class SessionBloc extends Bloc<SessionEvent, SessionState> {
   ) async {
     _intended = false;
     _reconnectAttempts = 0;
+    _lastBytesIn = null;
+    _lastBytesOut = null;
+    _lastBytesAt = null;
     _connectTimer?.cancel();
     _reconnectTimer?.cancel();
     await _tunnel.disconnect();
@@ -264,6 +289,8 @@ class SessionBloc extends Bloc<SessionEvent, SessionState> {
         duration: '00:00:00',
         reconnecting: false,
         message: null,
+        downRate: '—',
+        upRate: '—',
       ),
     );
   }
@@ -303,6 +330,7 @@ class SessionBloc extends Bloc<SessionEvent, SessionState> {
     SessionNetworkPathChanged event,
     Emitter<SessionState> emit,
   ) {
+    emit(state.copyWith(networkKind: event.kind));
     if (!_intended) return;
     if (state.phase == SessionPhase.protected) return;
     if (state.phase == SessionPhase.connecting) return;
@@ -380,6 +408,29 @@ class SessionBloc extends Bloc<SessionEvent, SessionState> {
   }
 
   void _onStatus(SessionStatusUpdated event, Emitter<SessionState> emit) {
-    emit(state.copyWith(duration: event.duration));
+    final now = DateTime.now();
+    final incoming = parseTrafficBytes(event.byteIn);
+    final outgoing = parseTrafficBytes(event.byteOut);
+    var down = state.downRate;
+    var up = state.upRate;
+    if (_lastBytesIn != null &&
+        _lastBytesOut != null &&
+        _lastBytesAt != null) {
+      final dt = now.difference(_lastBytesAt!).inMilliseconds / 1000;
+      if (dt >= 0.5) {
+        down = formatRate((incoming - _lastBytesIn!) / dt);
+        up = formatRate((outgoing - _lastBytesOut!) / dt);
+        _lastBytesIn = incoming;
+        _lastBytesOut = outgoing;
+        _lastBytesAt = now;
+      }
+    } else {
+      _lastBytesIn = incoming;
+      _lastBytesOut = outgoing;
+      _lastBytesAt = now;
+    }
+    emit(
+      state.copyWith(duration: event.duration, downRate: down, upRate: up),
+    );
   }
 }

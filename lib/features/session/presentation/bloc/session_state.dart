@@ -15,6 +15,9 @@ abstract class SessionState with _$SessionState {
     @Default(false) bool didRefreshOnFailure,
     @Default(true) bool killSwitchEnabled,
     @Default(false) bool reconnecting,
+    @Default(NetworkKind.other) NetworkKind networkKind,
+    @Default('—') String downRate,
+    @Default('—') String upRate,
   }) = _SessionState;
 
   bool get isProtected => phase == SessionPhase.protected;

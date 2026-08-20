@@ -1,6 +1,6 @@
 # Status — Cyber VPN
 
-**Last updated:** 19 August 2026  
+**Last updated:** 20 August 2026  
 **Repo:** `cyber-vpn` (new app). Turbo Secure is `flutter_vpn` — reference only.  
 **Verdict:** Architecture + OpenVPN client with **kill switch / reconnect**. **Not store-ready.** IAP / minutes / ads **deferred** (owner: after remaining product features).
 
@@ -24,13 +24,15 @@
 
 ## Done
 
+Shipped behavior with details: **[FEATURES.md](FEATURES.md)**.
+
 ### Product / UX (thin)
 
 - Splash → privacy declaration → Home.
-- Home: connect ring, duration, location row, threat **copy** (static, not real Wi‑Fi detect). Reconnect copy under the ring when the tunnel drops.
-- Locations: search, flags, premium → paywall **route** (no purchase).
-- Settings: System / Light / Dark; **kill switch toggle** (default on); Android **Always-on VPN** row opens the **system** Cyber VPN profile (Always-on + Block connections without VPN). iOS stay-protected copy.
-- Paywall page: static Annual $39.99 / Monthly $9.99 cards. No store, no restore, no trial.
+- Home: Protect ring, threat banner, stats ticker, location row, Go Premium.
+- Locations: search, flags, premium → paywall route, ping bars.
+- Settings: theme, kill switch, Android Always-on / iOS stay-protected copy.
+- Paywall: static $39.99 / $9.99. No store.
 
 ### Engineering
 
@@ -41,6 +43,9 @@
 - Kill switch (best-effort OpenVPN): `OpenVpnKillSwitch` patches client config with `persist-tun`, `persist-key`, `ping` / `ping-restart`, `block-ipv6` when enabled. Unexpected drop or path change while Protect is intended → backoff reconnect (max 5). User disconnect does not reconnect.
 - Android: VPN permission `onActivityResult`, `extractNativeLibs`, 16 KB page-size flags, JNI `pickFirst` for WireGuard `.so` clash, `OpenVPNService` + `VpnService` intent-filter, Always-on row via MethodChannel `com.cybervpn.cyber_vpn/device` (VPN settings + fallbacks; `<queries>` for API 30+).
 - iOS: Packet Tunnel `tunPersist = true`; OpenVPNAdapter reconnects on Wi‑Fi **or** cellular path (not Wi‑Fi only). App Group `group.com.cybervpn.cyberVpn`. SPM **off**.
+- Threat banner: `NetworkKind` from `connectivity_plus` (Wi‑Fi = untrusted, cellular, none). No SSID. Copy changes when `SessionPhase.protected`.
+- Stats ticker: OpenVPN byte counters → rates in `SessionBloc`; Home `StatsTicker`. Values are volume/rate only, not destinations.
+- Ping: `OpenVpnRemote.first` + `TcpServerProbe` (prefer TCP remote, else try 443; timeout ~1.8s, concurrency 4). Failed probe = empty bar, not an IP.
 - No UXCam. No global TLS bypass.
 
 ### Identifiers
@@ -63,9 +68,8 @@ Money loop is **deferred**. Next agent should continue **retention / product**, 
 
 ### Next — retention / product (do this now)
 
-1. **Real threat banner** (untrusted Wi‑Fi), stats ticker (uptime already partial), ping bar on Locations.
-2. Connection polish: `PremiumGate` widget (UI only until IAP), goldens for Home / Paywall / Locations × light × dark.
-3. `bloc_test` for Session (kill switch / reconnect) / Locations.
+1. Connection polish: `PremiumGate` widget (UI only until IAP), goldens for Home / Paywall / Locations × light × dark.
+2. `bloc_test` for Session (kill switch / reconnect / path) / Locations (ping).
 
 ### P0 — money loop (later, owner request)
 
@@ -85,12 +89,14 @@ Money loop is **deferred**. Next agent should continue **retention / product**, 
 
 ### Protection layers (what each control does)
 
-| Control | Where | If on |
-|---------|--------|--------|
-| In-app kill switch | Settings, default on | Patch `.ovpn` (`persist-tun`, `ping-restart`, `block-ipv6`). If Protect is **intended** and the tunnel drops, app reconnects (max 5). User tap to disconnect does **not** auto-reconnect. |
-| Auto-reconnect | Always while Protect is on | Wi‑Fi ↔ cellular or unexpected drop → retry same location. |
-| Always-on VPN | Android **system** profile for Cyber VPN | System keeps this VPN running. **Tapping Protect to disconnect usually does not stick** — Android starts the tunnel again. Turn Always-on **off** first if the user wants a real disconnect. |
-| Block connections without VPN | Same system screen | No app internet while the tunnel is down. Real leak block. Use with Always-on. |
+Real-life examples: **[FEATURES.md — Kill switch vs Always-on](FEATURES.md#kill-switch-vs-always-on-real-life)**.
+
+| Control | Where | If on | Real-life |
+|---------|--------|--------|-----------|
+| In-app kill switch | Settings, default on | Sticky OpenVPN + reconnect if Protect was on and the tunnel dies. User disconnect stays off. | Hotel Wi‑Fi blip → app reconnects. You tap Protect off → stays off. **Can still leak for a second.** |
+| Auto-reconnect | While Protect is on | Retry same city on path change / drop (max 5). | Leave café Wi‑Fi, LTE kicks in → tries same city. |
+| Always-on VPN | Android **system** profile | OS keeps this VPN running (swipe/reboot). Protect off usually **comes back**. | Swipe app away → VPN returns. Want it off? Turn Always-on off first. |
+| Block connections without VPN | Same system screen | No app internet while tunnel is down. | Blip → Instagram has **no** internet until VPN is back. Real leak block. |
 
 Do not claim “military-grade kill switch.” iOS On Demand / `includeAllNetworks` from the app VPN manager is **V1**. Extension already persists TUN and reconnects on path.
 

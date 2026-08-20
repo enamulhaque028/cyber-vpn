@@ -4,7 +4,8 @@ This folder is the source of truth for **Cyber VPN** (`/Users/sabrinaakter/devel
 
 | File | Use |
 |------|-----|
-| [STATUS.md](STATUS.md) | What is built, what is not, **what to do next**, protection-layer behavior |
+| [STATUS.md](STATUS.md) | What is built vs not, **what to do next**, protection-layer behavior |
+| [FEATURES.md](FEATURES.md) | **Shipped feature list** with basic details (Home, Locations, Settings, tunnel) |
 | [ARCHITECTURE.md](ARCHITECTURE.md) | How the code is laid out; conventions for agents |
 | [PROJECT_PLAN.md](PROJECT_PLAN.md) | Full product spec (goals, monetization, MVP vs V1 vs V2, what not to copy from Turbo Secure) |
 
