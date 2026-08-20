@@ -19,6 +19,10 @@ sealed class SessionEvent with _$SessionEvent {
   const factory SessionEvent.connectTimedOut() = SessionConnectTimedOut;
   const factory SessionEvent.killSwitchChanged(bool enabled) =
       SessionKillSwitchChanged;
+  const factory SessionEvent.splitTunnelChanged(bool enabled) =
+      SessionSplitTunnelChanged;
+  const factory SessionEvent.bypassPackagesChanged(List<String> packages) =
+      SessionBypassPackagesChanged;
   const factory SessionEvent.networkPathChanged(NetworkKind kind) =
       SessionNetworkPathChanged;
   const factory SessionEvent.openSystemVpnSettings() =

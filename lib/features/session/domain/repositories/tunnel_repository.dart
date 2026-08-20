@@ -11,6 +11,7 @@ abstract class TunnelRepository {
     required String username,
     required String password,
     bool killSwitch = true,
+    List<String> bypassPackages = const [],
   });
 
   Future<void> disconnect();

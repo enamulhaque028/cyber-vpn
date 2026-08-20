@@ -54,6 +54,7 @@ class AxeVpnTunnelRepository implements TunnelRepository {
     required String username,
     required String password,
     bool killSwitch = true,
+    List<String> bypassPackages = const [],
   }) async {
     final engine = _engine;
     if (engine == null) {
@@ -68,6 +69,8 @@ class AxeVpnTunnelRepository implements TunnelRepository {
         username: username,
         password: password,
         certIsRequired: true,
+        // Plugin applies packages on Android only; never send iOS packages.
+        bypassPackages: Platform.isAndroid ? bypassPackages : const [],
       );
     } catch (e) {
       throw StateError('Could not start tunnel: $e');

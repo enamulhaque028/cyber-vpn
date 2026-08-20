@@ -34,11 +34,76 @@ class SettingsPage extends StatelessWidget {
               );
             },
           ),
+          if (defaultTargetPlatform == TargetPlatform.android) ...[
+            BlocBuilder<SessionBloc, SessionState>(
+              buildWhen: (p, n) =>
+                  p.splitTunnelEnabled != n.splitTunnelEnabled ||
+                  p.bypassPackages != n.bypassPackages,
+              builder: (context, session) {
+                final count = session.bypassPackages.length;
+                return Column(
+                  children: [
+                    SwitchListTile(
+                      title: const Text('Bypass selected apps'),
+                      subtitle: const Text(
+                        'Android only. Chosen apps skip the VPN (exclude list). '
+                        'Conflicts with “Block connections without VPN” — turn Block off, or bypassed apps get no internet.',
+                      ),
+                      value: session.splitTunnelEnabled,
+                      onChanged: (v) async {
+                        if (v) {
+                          final ok = await showDialog<bool>(
+                            context: context,
+                            builder: (ctx) => AlertDialog(
+                              title: const Text('Use with Block off'),
+                              content: const Text(
+                                'Bypassed apps leave the VPN on purpose. '
+                                'If Android “Block connections without VPN” is on, '
+                                'those apps will have no internet. Continue?',
+                              ),
+                              actions: [
+                                TextButton(
+                                  onPressed: () => Navigator.pop(ctx, false),
+                                  child: const Text('Cancel'),
+                                ),
+                                TextButton(
+                                  onPressed: () => Navigator.pop(ctx, true),
+                                  child: const Text('Enable'),
+                                ),
+                              ],
+                            ),
+                          );
+                          if (ok != true || !context.mounted) return;
+                        }
+                        context.read<SessionBloc>().add(
+                          SessionEvent.splitTunnelChanged(v),
+                        );
+                      },
+                    ),
+                    ListTile(
+                      enabled: session.splitTunnelEnabled,
+                      title: const Text('Choose apps'),
+                      subtitle: Text(
+                        count == 0
+                            ? 'None selected'
+                            : '$count app${count == 1 ? '' : 's'} bypass VPN',
+                        style: TextStyle(color: scheme.secondary),
+                      ),
+                      trailing: const Icon(Icons.chevron_right),
+                      onTap: session.splitTunnelEnabled
+                          ? () => context.router.push(const BypassAppsRoute())
+                          : null,
+                    ),
+                  ],
+                );
+              },
+            ),
+          ],
           if (defaultTargetPlatform == TargetPlatform.android)
             ListTile(
               title: const Text('Always-on VPN'),
               subtitle: Text(
-                'Open Android VPN settings, choose Cyber VPN, then turn on Always-on VPN and Block connections without VPN. That is the real leak block; the in-app switch cannot freeze the whole device.',
+                'Open Android VPN settings, choose Cyber VPN, then turn on Always-on VPN and (optionally) Block connections without VPN. That is the real leak block; the in-app switch cannot freeze the whole device. Do not use Block together with app bypass — bypassed apps would get no internet.',
                 style: TextStyle(color: scheme.secondary),
               ),
               trailing: const Icon(Icons.open_in_new),
@@ -50,7 +115,7 @@ class SettingsPage extends StatelessWidget {
             ListTile(
               title: const Text('Stay protected on iOS'),
               subtitle: Text(
-                'The extension reconnects when Wi-Fi or cellular returns. Kill switch keeps the TUN up and blocks IPv6. Full On Demand is a later slice.',
+                'The extension reconnects when Wi-Fi or cellular returns. Kill switch keeps the TUN up and blocks IPv6. Full On Demand is a later slice. Per-app VPN is not available on the App Store.',
                 style: TextStyle(color: scheme.secondary),
               ),
             ),

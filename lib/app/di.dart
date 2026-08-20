@@ -6,10 +6,12 @@ import 'package:cyber_vpn/features/locations/domain/repositories/locations_repos
 import 'package:cyber_vpn/features/locations/domain/repositories/server_probe.dart';
 import 'package:cyber_vpn/features/locations/presentation/bloc/locations_bloc.dart';
 import 'package:cyber_vpn/features/session/data/axe_vpn_tunnel_repository.dart';
+import 'package:cyber_vpn/features/session/data/device_installed_apps_repository.dart';
 import 'package:cyber_vpn/features/session/data/exit_ip_api.dart';
 import 'package:cyber_vpn/features/session/data/ip_who_is_exit_ip_repository.dart';
 import 'package:cyber_vpn/features/session/data/prefs_session_history_repository.dart';
 import 'package:cyber_vpn/features/session/domain/repositories/exit_ip_repository.dart';
+import 'package:cyber_vpn/features/session/domain/repositories/installed_apps_repository.dart';
 import 'package:cyber_vpn/features/session/domain/repositories/session_history_repository.dart';
 import 'package:cyber_vpn/features/session/domain/repositories/tunnel_repository.dart';
 import 'package:cyber_vpn/features/session/presentation/bloc/exit_check_cubit.dart';
@@ -44,6 +46,9 @@ Future<void> configureDependencies() async {
       () => SupabaseLocationsRepository(getIt()),
     )
     ..registerLazySingleton<ServerProbe>(TcpServerProbe.new)
+    ..registerLazySingleton<InstalledAppsRepository>(
+      DeviceInstalledAppsRepository.new,
+    )
     ..registerLazySingleton<ExitIpRepository>(
       () => IpWhoIsExitIpRepository(getIt()),
     )

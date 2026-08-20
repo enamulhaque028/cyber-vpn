@@ -27,9 +27,11 @@ lib/
       domain/repositories/session_history_repository.dart
       data/axe_vpn_tunnel_repository.dart
       data/exit_ip_api.dart              # Retrofit client for ipwho.is
+      data/device_installed_apps_repository.dart
       data/ip_who_is_exit_ip_repository.dart
       data/prefs_session_history_repository.dart
       data/models/ip_who_is_response.dart  # Freezed DTO for exit lookup
+      domain/repositories/installed_apps_repository.dart
       presentation/bloc/    # session + exit_check + history cubits
       presentation/history_aggregates.dart
       presentation/pages/  # home, connection_info, history
@@ -41,7 +43,7 @@ lib/
       data/supabase_locations_repository.dart
       data/tcp_server_probe.dart
       presentation/
-    settings/               # ThemeCubit; paywall page currently lives here (move to subscription/)
+    settings/               # ThemeCubit; bypass_apps + paywall pages
 ```
 
 Add **`features/subscription/`** and **`features/minutes/`** as new vertical slices (plan). Do not put RevenueCat or AdMob in `HomePage`.
@@ -57,6 +59,7 @@ Add **`features/subscription/`** and **`features/minutes/`** as new vertical sli
 - Location ping is TCP connect RTT via `ServerProbe` (`TcpServerProbe`). UI shows a bar + ms, never the host.
 - Exit check uses **HTTPS** (`AppConfig.exitIpBaseUrl` via Dio + Retrofit). Never Turbo-style plain HTTP ip-api. Do not log exit IPs.
 - Session history and favorites/recents are SharedPreferences only (on-device).
+- **Split tunnel:** Android exclude apps shipped via `OpenVPN.connect(bypassPackages: …)` + Settings picker (`InstalledAppsRepository` / MAIN+LAUNCHER queries). Mutually exclusive with “Block connections without VPN” as max leak protection. No iOS consumer per-app VPN. Include-only / IP routes deferred.
 - Cache-first locations: memory → SharedPreferences → network. Refresh on connect **timeout** once (`didRefreshOnFailure`).
 - iOS tunnel ids must stay in sync with `AppConfig.iosAppGroup` and `iosVpnExtensionBundleId`.
 

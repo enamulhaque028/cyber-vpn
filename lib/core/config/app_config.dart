@@ -16,6 +16,8 @@ class AppConfig {
   static const prefsCachedConfig = 'cached_vpn_config';
   static const prefsCachedServers = 'cached_vpn_servers';
   static const prefsKillSwitch = 'kill_switch';
+  static const prefsSplitTunnelEnabled = 'split_tunnel_enabled';
+  static const prefsBypassPackages = 'bypass_packages';
   static const prefsFavoriteServerIds = 'favorite_server_ids';
   static const prefsRecentServerIds = 'recent_server_ids';
   static const prefsSessionHistory = 'session_history';
@@ -24,6 +26,7 @@ class AppConfig {
   static const exitIpBaseUrl = 'https://ipwho.is/';
 
   static const deviceSettingsChannel = 'com.cybervpn.cyber_vpn/device';
+  static const androidApplicationId = 'com.cybervpn.cyber_vpn';
 
   /// iOS App Group + Packet Tunnel identifiers (must match Xcode).
   static const iosAppGroup = 'group.com.cybervpn.cyberVpn';

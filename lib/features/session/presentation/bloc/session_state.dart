@@ -14,6 +14,8 @@ abstract class SessionState with _$SessionState {
     String? message,
     @Default(false) bool didRefreshOnFailure,
     @Default(true) bool killSwitchEnabled,
+    @Default(false) bool splitTunnelEnabled,
+    @Default([]) List<String> bypassPackages,
     @Default(false) bool reconnecting,
     @Default(NetworkKind.other) NetworkKind networkKind,
     @Default('—') String downRate,

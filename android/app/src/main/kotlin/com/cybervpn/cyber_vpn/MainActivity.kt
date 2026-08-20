@@ -1,6 +1,8 @@
 package com.cybervpn.cyber_vpn
 
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.os.Build
 import android.provider.Settings
 import com.axevpn.flutter.openvpn.AxeVPNFlutterPlugin
 import io.flutter.embedding.android.FlutterActivity
@@ -14,16 +16,53 @@ class MainActivity : FlutterActivity() {
             flutterEngine.dartExecutor.binaryMessenger,
             "com.cybervpn.cyber_vpn/device",
         ).setMethodCallHandler { call, result ->
-            if (call.method == "openVpnSettings") {
-                if (openVpnSettings()) {
-                    result.success(true)
-                } else {
-                    result.error("UNAVAILABLE", "No VPN settings activity", null)
+            when (call.method) {
+                "openVpnSettings" -> {
+                    if (openVpnSettings()) {
+                        result.success(true)
+                    } else {
+                        result.error("UNAVAILABLE", "No VPN settings activity", null)
+                    }
                 }
-            } else {
-                result.notImplemented()
+                "listLaunchableApps" -> {
+                    try {
+                        result.success(listLaunchableApps())
+                    } catch (e: Exception) {
+                        result.error("APPS", e.message, null)
+                    }
+                }
+                else -> result.notImplemented()
             }
         }
+    }
+
+    private fun listLaunchableApps(): List<Map<String, String>> {
+        val pm = packageManager
+        val intent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
+        @Suppress("DEPRECATION")
+        val resolved = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            pm.queryIntentActivities(
+                intent,
+                PackageManager.ResolveInfoFlags.of(0),
+            )
+        } else {
+            pm.queryIntentActivities(intent, 0)
+        }
+        val seen = HashSet<String>()
+        val out = ArrayList<Map<String, String>>()
+        for (info in resolved) {
+            val packageName = info.activityInfo.packageName
+            if (!seen.add(packageName)) continue
+            val label = info.loadLabel(pm)?.toString() ?: packageName
+            out.add(
+                mapOf(
+                    "packageName" to packageName,
+                    "label" to label,
+                ),
+            )
+        }
+        out.sortBy { it["label"]?.lowercase() }
+        return out
     }
 
     private fun openVpnSettings(): Boolean {

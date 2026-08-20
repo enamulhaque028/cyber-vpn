@@ -84,9 +84,10 @@ None of these log destination IPs, DNS queries, or payloads. Ping never shows a 
 |---------|---------|
 | Appearance | System / Light / Dark. Persisted. Default system. |
 | Kill switch | Default **on**. See **Kill switch vs Always-on** below. |
+| Bypass selected apps (Android) | Exclude-list split tunnel. Conflicts with Block-without-VPN. See **Split tunnel**. |
 | Auto-reconnect | While Protect is on: Wi‑Fi ↔ cellular or unexpected drop retries the **same** location. |
 | Always-on VPN (Android) | System setting. See **Kill switch vs Always-on** below. |
-| Block connections without VPN (Android) | System setting. See **Kill switch vs Always-on** below. |
+| Block connections without VPN (Android) | System setting. See **Kill switch vs Always-on** below. Do not combine with app bypass. |
 | Stay protected (iOS) | Copy only. Extension `tunPersist` + reconnect on Wi‑Fi or cellular. Full On Demand is later. |
 | Usage history | Settings → Usage history. Summary chips, 7-day animated chart, session list with relative bars. Clearable. |
 | Connection check | Settings shortcut to Connection page. |
@@ -165,6 +166,40 @@ iOS has no Always-on sheet like this. The extension keeps TUN and reconnects on 
 
 ---
 
+## Split tunnel / per-app VPN
+
+**Status:** Android **exclude-list shipped**. Include-only / IP split / iOS per-app remain deferred.
+
+### Shipped (Android)
+
+| | |
+|--|--|
+| What | Settings → **Bypass selected apps** + **Choose apps**. Selected launchable packages skip the VPN while Protect is on. |
+| How | Prefs (`prefsSplitTunnelEnabled`, `prefsBypassPackages`) → `SessionBloc` → `TunnelRepository.connect(bypassPackages:)` → `axevpn_flutter` `OpenVPN.connect` → native `addDisallowedApplication`. App list via MethodChannel `listLaunchableApps` (MAIN/LAUNCHER only; no `QUERY_ALL_PACKAGES`). |
+| Reconnect | Toggle or list change while Protected disconnects and reconnects with the new list. |
+| iOS | UI hidden. No consumer per-app VPN. |
+
+### Conflict with Block connections without VPN
+
+**Block** = no internet unless traffic is on this VPN. **Bypass** = some apps leave the VPN. Enabling bypass shows a warning; Always-on copy tells users not to use Block with bypass.
+
+| User goal | Settings |
+|-----------|----------|
+| Cafe/hotel leak protection | Full tunnel + Always-on + **Block on**; **bypass off** |
+| Bypass banking / local apps | Bypass on + apps chosen; **Block off** |
+
+Bypassed apps on public Wi‑Fi are **unprotected by design**.
+
+### Still deferred
+
+| Mode | Why |
+|------|-----|
+| Include-only (“only these apps on VPN”) | Needs `axevpn_flutter` fork |
+| IP / route split | We do not own `VpnService.Builder` |
+| iOS per-app VPN | MDM/enterprise only — not App Store |
+
+---
+
 ## Tunnel
 
 | Feature | Details |
@@ -188,7 +223,7 @@ iOS has no Always-on sheet like this. The extension keeps TUN and reconnects on 
 
 ## Explicitly not shipped yet
 
-Subscriptions, minutes, ads, real IAP gate on premium cities, Crashlytics, honest privacy URLs, WireGuard / new fleet.
+Subscriptions, minutes, ads, real IAP gate on premium cities, Crashlytics, honest privacy URLs, WireGuard / new fleet. Android **include-only** / IP split / iOS per-app VPN (exclude-list bypass is shipped — see above).
 
 ---
 
@@ -207,12 +242,20 @@ Keep enriching the product without becoming a Nord clone. Shipped Tier A items a
 
 ### Tier B — later
 
-Split tunnel (Android; conflicts with Block-without-VPN), home widget, auto best-ping, in-app review once, protected/dropped notifications.
+| Feature | Notes |
+|---------|--------|
+| **Android exclude-list split** | **Shipped** — Settings bypass + `bypassPackages`. See [Split tunnel](#split-tunnel--per-app-vpn). |
+| Home widget | Later. |
+| Auto best-ping | Later. |
+| In-app review once | After N protects; do not reset on splash. |
+| Protected / dropped notifications | Later. |
 
 ### Tier C / D
 
 Store trust, Crashlytics; WireGuard/fleet = V2. No UXCam / TLS bypass / “military grade.”
 
+**Deferred (do not promise):** Android include-only list, IP/route split, iOS consumer per-app VPN (MDM-only).
+
 ### Build order
 
-Exit check → favorites/recents → session history → **PremiumGate/goldens** → money loop when owner asks → Tier B.
+Exit check → favorites/recents → session history → Android exclude bypass → **PremiumGate/goldens** → money loop when owner asks → remaining Tier B.

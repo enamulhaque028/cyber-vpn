@@ -29,6 +29,10 @@ class SessionBloc extends Bloc<SessionEvent, SessionState> {
        super(
          SessionState(
            killSwitchEnabled: _prefs.getBool(AppConfig.prefsKillSwitch) ?? true,
+           splitTunnelEnabled:
+               _prefs.getBool(AppConfig.prefsSplitTunnelEnabled) ?? false,
+           bypassPackages:
+               _prefs.getStringList(AppConfig.prefsBypassPackages) ?? const [],
          ),
        ) {
     on<SessionStarted>(_onStarted);
@@ -39,6 +43,8 @@ class SessionBloc extends Bloc<SessionEvent, SessionState> {
     on<SessionStatusUpdated>(_onStatus);
     on<SessionConnectTimedOut>(_onConnectTimedOut);
     on<SessionKillSwitchChanged>(_onKillSwitchChanged);
+    on<SessionSplitTunnelChanged>(_onSplitTunnelChanged);
+    on<SessionBypassPackagesChanged>(_onBypassPackagesChanged);
     on<SessionNetworkPathChanged>(_onNetworkPathChanged);
     on<SessionOpenSystemVpnSettings>(_onOpenSystemVpnSettings);
   }
@@ -50,6 +56,9 @@ class SessionBloc extends Bloc<SessionEvent, SessionState> {
   final Connectivity _connectivity;
   bool _initialized = false;
   bool _intended = false;
+  /// True while recycling the tunnel for kill-switch / bypass option changes.
+  /// Suppresses stage-driven `_scheduleReconnect` so we do not double-connect.
+  bool _recyclingTunnel = false;
   int _reconnectAttempts = 0;
   Timer? _connectTimer;
   Timer? _reconnectTimer;
@@ -212,6 +221,7 @@ class SessionBloc extends Bloc<SessionEvent, SessionState> {
         username: creds.username,
         password: creds.password,
         killSwitch: state.killSwitchEnabled,
+        bypassPackages: _activeBypassPackages,
       );
       _armConnectTimeout();
     } catch (e) {
@@ -326,6 +336,7 @@ class SessionBloc extends Bloc<SessionEvent, SessionState> {
     Emitter<SessionState> emit,
   ) async {
     _intended = false;
+    _recyclingTunnel = false;
     _reconnectAttempts = 0;
     _connectTimer?.cancel();
     _reconnectTimer?.cancel();
@@ -370,12 +381,52 @@ class SessionBloc extends Bloc<SessionEvent, SessionState> {
   ) async {
     await _prefs.setBool(AppConfig.prefsKillSwitch, event.enabled);
     emit(state.copyWith(killSwitchEnabled: event.enabled));
-    if (_intended &&
-        (state.phase == SessionPhase.protected ||
-            state.phase == SessionPhase.connecting)) {
-      await _tunnel.disconnect();
-      add(const SessionEvent.connectPressed());
+    await _reconnectIfProtecting();
+  }
+
+  Future<void> _onSplitTunnelChanged(
+    SessionSplitTunnelChanged event,
+    Emitter<SessionState> emit,
+  ) async {
+    if (event.enabled == state.splitTunnelEnabled) return;
+    await _prefs.setBool(AppConfig.prefsSplitTunnelEnabled, event.enabled);
+    emit(state.copyWith(splitTunnelEnabled: event.enabled));
+    await _reconnectIfProtecting();
+  }
+
+  Future<void> _onBypassPackagesChanged(
+    SessionBypassPackagesChanged event,
+    Emitter<SessionState> emit,
+  ) async {
+    final packages = List<String>.from(event.packages)..sort();
+    final previous = List<String>.from(state.bypassPackages);
+    if (packages.length == previous.length &&
+        packages.asMap().entries.every((e) => e.value == previous[e.key])) {
+      return;
     }
+    await _prefs.setStringList(AppConfig.prefsBypassPackages, packages);
+    emit(state.copyWith(bypassPackages: packages));
+    if (!state.splitTunnelEnabled) return;
+    await _reconnectIfProtecting();
+  }
+
+  List<String> get _activeBypassPackages {
+    if (!state.splitTunnelEnabled) return const [];
+    return state.bypassPackages;
+  }
+
+  Future<void> _reconnectIfProtecting() async {
+    if (!_intended) return;
+    if (state.phase != SessionPhase.protected &&
+        state.phase != SessionPhase.connecting) {
+      return;
+    }
+    _connectTimer?.cancel();
+    _reconnectTimer?.cancel();
+    _reconnectAttempts = 0;
+    _recyclingTunnel = true;
+    await _tunnel.disconnect();
+    add(const SessionEvent.connectPressed());
   }
 
   void _onNetworkPathChanged(
@@ -414,6 +465,7 @@ class SessionBloc extends Bloc<SessionEvent, SessionState> {
       _connectTimer?.cancel();
       _reconnectTimer?.cancel();
       _reconnectAttempts = 0;
+      _recyclingTunnel = false;
       if (_sessionStartedAt == null) {
         _beginSessionRecord();
       }
@@ -437,18 +489,31 @@ class SessionBloc extends Bloc<SessionEvent, SessionState> {
       emit(state.copyWith(phase: SessionPhase.connecting));
     } else if (raw.contains('denied')) {
       _intended = false;
+      _recyclingTunnel = false;
       _reconnectTimer?.cancel();
       emit(state.copyWith(phase: SessionPhase.idle, reconnecting: false));
     } else if (raw.contains('disconnect') ||
         raw.contains('error') ||
         raw.contains('exit')) {
       if (!_intended) {
+        _recyclingTunnel = false;
         await _finishSessionRecord();
         emit(
           state.copyWith(
             phase: SessionPhase.idle,
             reconnecting: false,
             duration: '00:00:00',
+          ),
+        );
+        return;
+      }
+      if (_recyclingTunnel) {
+        _recyclingTunnel = false;
+        emit(
+          state.copyWith(
+            phase: SessionPhase.connecting,
+            reconnecting: true,
+            message: 'Applying settings…',
           ),
         );
         return;

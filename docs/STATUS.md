@@ -2,7 +2,7 @@
 
 **Last updated:** 20 August 2026  
 **Repo:** `cyber-vpn` (new app). Turbo Secure is `flutter_vpn` — reference only.  
-**Verdict:** OpenVPN client with kill switch, threat/stats/ping, **exit check**, **favorites/recents**, **session history**. **Not store-ready.** IAP deferred.
+**Verdict:** OpenVPN client with kill switch, threat/stats/ping, **exit check**, **favorites/recents**, **session history**, **Android app bypass (exclude split)**. **Not store-ready.** IAP deferred.
 
 ---
 
@@ -33,7 +33,7 @@ Shipped behavior with details: **[FEATURES.md](FEATURES.md)**.
 - Locations: All / Favorites / Recent tabs, search on All, flags, premium → paywall route, ping bars.
 - Connection: HTTPS exit IP / city / country / ISP (`ipwho.is`; Freezed response DTO).
 - History: on-device sessions with summary, 7-day chart, relative bars (Settings).
-- Settings: theme, kill switch, Android Always-on / iOS stay-protected, history + connection links.
+- Settings: theme, kill switch, **Android bypass apps**, Android Always-on / iOS stay-protected, history + connection links.
 - Paywall: static $39.99 / $9.99. No store.
 
 ### Engineering
@@ -51,6 +51,7 @@ Shipped behavior with details: **[FEATURES.md](FEATURES.md)**.
 - Exit check: `ExitIpApi` (Dio + Retrofit) → `https://ipwho.is/` only; `IpWhoIsExitIpRepository` maps `IpWhoIsResponse` → `ExitInfo`. Shown on Connection page; not persisted.
 - Favorites / recents: location IDs in SharedPreferences; Locations **tabs** (All flat list; Favorites / Recent filtered).
 - Session history: `PrefsSessionHistoryRepository` (max 50); recorded when a protected session ends (≥3s) with byte deltas finished before counters clear; History UI uses `fl_chart`.
+- Android app bypass: prefs + Settings picker + `bypassPackages` on connect; MAIN/LAUNCHER app list via MethodChannel (no QUERY_ALL_PACKAGES).
 - No UXCam. No global TLS bypass.
 
 ### Identifiers
@@ -75,7 +76,7 @@ Money loop is **deferred**. Next agent should continue **retention / product**, 
 
 1. Connection polish: `PremiumGate` widget (UI only until IAP), goldens for Home / Paywall / Locations × light × dark.
 2. `bloc_test` for Session / Locations / History / Exit check.
-3. Tier B from [FEATURES.md — Enrichment roadmap](FEATURES.md#enrichment-roadmap-same-doc): widget, auto best-ping, Android split tunnel (later).
+3. Tier B from [FEATURES.md — Enrichment roadmap](FEATURES.md#enrichment-roadmap-same-doc): widget, auto best-ping. Android exclude split is **shipped** ([FEATURES](FEATURES.md#split-tunnel--per-app-vpn)).
 
 ### P0 — money loop (later, owner request)
 
@@ -102,13 +103,15 @@ Real-life examples: **[FEATURES.md — Kill switch vs Always-on](FEATURES.md#kil
 | In-app kill switch | Settings, default on | Sticky OpenVPN + reconnect if Protect was on and the tunnel dies. User disconnect stays off. | Hotel Wi‑Fi blip → app reconnects. You tap Protect off → stays off. **Can still leak for a second.** |
 | Auto-reconnect | While Protect is on | Retry same city on path change / drop (max 5). | Leave café Wi‑Fi, LTE kicks in → tries same city. |
 | Always-on VPN | Android **system** profile | OS keeps this VPN running (swipe/reboot). Protect off usually **comes back**. | Swipe app away → VPN returns. Want it off? Turn Always-on off first. |
-| Block connections without VPN | Same system screen | No app internet while tunnel is down. | Blip → Instagram has **no** internet until VPN is back. Real leak block. |
+| Block connections without VPN | Same system screen | No app internet while tunnel is down. | Blip → Instagram has **no** internet until VPN is back. Real leak block. **Conflicts with app bypass.** |
+| Bypass selected apps | Settings (Android) | Chosen packages use Wi‑Fi/cellular while Protected. | Banking app offline-VPN; leave Block off. |
 
 Do not claim “military-grade kill switch.” iOS On Demand / `includeAllNetworks` from the app VPN manager is **V1**. Extension already persists TUN and reconnects on path.
 
 ### Explicitly later (do not build unless asked)
 
-- **V1:** Superwall, split tunnel, widget, accounts + 5 devices + deletion, iOS On Demand, referral.
+- **V1:** Superwall, widget, accounts + 5 devices + deletion, iOS On Demand, referral. (Android exclude-list bypass already shipped.)
+- **Deferred (not App Store / needs fork or V2 tunnel):** Android include-only list, IP/route split, consumer iOS per-app VPN.
 - **V2:** new fleet, WireGuard default, per-device keys, drop shared password + client `.ovpn` warehouse, audit, dedicated IP.
 
 ---
