@@ -50,7 +50,7 @@ class AxeVpnTunnelRepository implements TunnelRepository {
   @override
   Future<void> connect({
     required String config,
-    required String country,
+    required String notificationName,
     required String username,
     required String password,
     bool killSwitch = true,
@@ -60,12 +60,13 @@ class AxeVpnTunnelRepository implements TunnelRepository {
     if (engine == null) {
       throw StateError('Tunnel not initialized');
     }
+    await ensureNotificationPermission();
     final ovpn = OpenVpnKillSwitch.apply(config, enabled: killSwitch);
     debugPrint('Connecting OpenVPN via axevpn_flutter');
     try {
       await engine.connect(
         ovpn,
-        country,
+        notificationName,
         username: username,
         password: password,
         certIsRequired: true,
@@ -80,6 +81,17 @@ class AxeVpnTunnelRepository implements TunnelRepository {
   @override
   Future<void> disconnect() async {
     _engine?.disconnect();
+  }
+
+  @override
+  Future<bool> ensureNotificationPermission() async {
+    if (!Platform.isAndroid) return true;
+    try {
+      final ok = await _device.invokeMethod<bool>('ensureNotifications');
+      return ok == true;
+    } catch (_) {
+      return false;
+    }
   }
 
   @override

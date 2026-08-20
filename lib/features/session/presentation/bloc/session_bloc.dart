@@ -217,7 +217,7 @@ class SessionBloc extends Bloc<SessionEvent, SessionState> {
     try {
       await _tunnel.connect(
         config: location.config,
-        country: location.country,
+        notificationName: location.displayName,
         username: creds.username,
         password: creds.password,
         killSwitch: state.killSwitchEnabled,
