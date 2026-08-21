@@ -14,7 +14,6 @@ lib/
     router.gr.dart          # generated
   core/
     config/app_config.dart
-    json.dart               # jsonInt / jsonString / jsonBool helpers
     theme/
     widgets/                # ClButton, ConnectRing, ThreatBanner, StatsTicker, PingBar
   features/
