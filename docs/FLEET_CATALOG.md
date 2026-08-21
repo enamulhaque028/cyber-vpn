@@ -44,16 +44,16 @@ Single file, one HTTP GET for credentials + servers. Keys match existing Freezed
       "title": "vpnbook-us16-tcp443",
       "flagUrl": "https://flagcdn.com/w80/us.png",
       "config": "<full .ovpn text>",
-      "networkFlagUrl": "",
-      "isPremium": false
+      "isPremium": false,
+      "source": "vpnbook"
     }
   ]
 }
 ```
 
 - **Stable `id`s:** SHA-256 of `source:key` → 31-bit int (not array index), so favorites/recents survive refreshes.
-- **`fleet/catalog.meta.json`:** `{ updatedAt, serverCount, sha256 }` for debugging only (app does not read it).
-- Catalog is written **compact** (minified) for size.
+- **`fleet/catalog.meta.json`:** `{ updatedAt, updatedAtBd, serverCount, sha256 }` for debugging only (app does not read it). `updatedAtBd` is Asia/Dhaka, e.g. `2026-08-21 02:38:12 PM BST`.
+- Catalog is written **pretty-printed** (`indent=2`) for readability in git diffs.
 
 ### 2. Ingest script — `tool/fleet/build_catalog.py`
 
@@ -240,3 +240,4 @@ Deleted: `lib/features/locations/data/supabase_locations_repository.dart`
 - **VPN Gate** exits are community relays: volatile, uneven quality, and sometimes blocked from certain networks.
 - **jsDelivr branch cache** can be sticky; the workflow purges after each successful publish. Raw GitHub is the app’s safety net.
 - Do **not** treat this as a first-party VPN network. Own WireGuard fleet remains a later project.
+- **Cache refresh (deferred):** App keeps prefs until connect-timeout `forceRefresh` or data clear — CDN updates are not picked up automatically. Tracked under STATUS → Explicitly later.

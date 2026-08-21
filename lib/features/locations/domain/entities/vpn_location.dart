@@ -16,8 +16,9 @@ abstract class VpnLocation with _$VpnLocation {
     @JsonKey(fromJson: jsonString) required String title,
     @JsonKey(fromJson: jsonString) required String flagUrl,
     @JsonKey(fromJson: jsonString) required String config,
-    @JsonKey(fromJson: jsonString) required String networkFlagUrl,
     @JsonKey(fromJson: jsonBool) required bool isPremium,
+    /// Catalog origin: `vpnbook` | `vpngate` (and future sources).
+    @JsonKey(fromJson: jsonString) @Default('') String source,
   }) = _VpnLocation;
 
   factory VpnLocation.fromJson(Map<String, dynamic> json) =>

@@ -110,6 +110,7 @@ Do not claim “military-grade kill switch.” iOS On Demand / `includeAllNetwor
 
 ### Explicitly later (do not build unless asked)
 
+- **Fleet catalog cache refresh:** Prefs today are cache-first forever until connect-timeout `forceRefresh` or cleared data. Add TTL (e.g. refetch if older than 24h) and/or Locations pull-to-refresh so CDN/`fleet/catalog.json` updates reach users without reinstall. See [FLEET_CATALOG.md](FLEET_CATALOG.md).
 - **V1:** Superwall, widget, accounts + 5 devices + deletion, iOS On Demand, referral. (Android exclude-list bypass already shipped.)
 - **Deferred (not App Store / needs fork or V2 tunnel):** Android include-only list, IP/route split, consumer iOS per-app VPN.
 - **V2:** new fleet, WireGuard default, per-device keys, drop shared password + client `.ovpn` warehouse, audit, dedicated IP.

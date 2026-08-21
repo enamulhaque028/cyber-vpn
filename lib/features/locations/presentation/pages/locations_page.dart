@@ -230,11 +230,11 @@ class _LocationTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final probed = rttMs.containsKey(loc.id);
     return ListTile(
-      leading: loc.networkFlagUrl.isEmpty
+      leading: loc.flagUrl.isEmpty
           ? const Icon(Icons.flag_outlined)
           : ClipOval(
               child: CachedNetworkImage(
-                imageUrl: loc.networkFlagUrl,
+                imageUrl: loc.flagUrl,
                 width: 32,
                 height: 32,
                 fit: BoxFit.cover,

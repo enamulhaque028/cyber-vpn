@@ -17,8 +17,25 @@ void main() {
     stderr.writeln('duplicate stable ids');
     exit(1);
   }
+
+  var seenGate = false;
+  for (final s in servers) {
+    if (s.source != 'vpnbook' && s.source != 'vpngate') {
+      stderr.writeln('bad source on ${s.title}: ${s.source}');
+      exit(1);
+    }
+    if (s.source == 'vpngate') {
+      seenGate = true;
+    } else if (seenGate) {
+      stderr.writeln('vpnbook after vpngate: ${s.title}');
+      exit(1);
+    }
+  }
+
   stdout.writeln(
     'ok credentials=${creds.username} servers=${servers.length} '
-    'uniqueIds=${ids.length}',
+    'uniqueIds=${ids.length} '
+    'vpnbook=${servers.where((s) => s.source == 'vpnbook').length} '
+    'vpngate=${servers.where((s) => s.source == 'vpngate').length}',
   );
 }
