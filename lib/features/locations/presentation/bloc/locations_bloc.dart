@@ -21,6 +21,7 @@ class LocationsBloc extends Bloc<LocationsEvent, LocationsState> {
     on<LocationsRttMeasured>(_onRtt);
     on<LocationsFavoriteToggled>(_onFavorite);
     on<LocationsRecentRemembered>(_onRecent);
+    on<LocationsSyncRequested>(_onSync);
   }
 
   final LocationsRepository _repository;
@@ -68,6 +69,56 @@ class LocationsBloc extends Bloc<LocationsEvent, LocationsState> {
       unawaited(_probeAll(all));
     } catch (e) {
       emit(LocationsState.failure(e.toString()));
+    }
+  }
+
+  Future<void> _onSync(
+    LocationsSyncRequested event,
+    Emitter<LocationsState> emit,
+  ) async {
+    final previous = state;
+    if (previous is LocationsLoaded) {
+      if (previous.syncing) return;
+      emit(previous.copyWith(syncing: true, syncError: null));
+    } else {
+      emit(const LocationsState.loading());
+    }
+
+    try {
+      final synced = await _repository.syncFromNetwork();
+      final q = previous is LocationsLoaded ? previous.query : '';
+      final visible = q.isEmpty
+          ? synced.servers
+          : synced.servers
+                .where(
+                  (l) =>
+                      l.country.toLowerCase().contains(q.toLowerCase()) ||
+                      l.city.toLowerCase().contains(q.toLowerCase()) ||
+                      l.title.toLowerCase().contains(q.toLowerCase()),
+                )
+                .toList();
+      emit(
+        LocationsState.loaded(
+          all: synced.servers,
+          visible: visible,
+          credentials: synced.credentials,
+          query: q,
+          favoriteIds: _readIds(AppConfig.prefsFavoriteServerIds),
+          recentIds: _readIds(AppConfig.prefsRecentServerIds),
+        ),
+      );
+      unawaited(_probeAll(synced.servers));
+    } catch (e) {
+      if (previous is LocationsLoaded) {
+        emit(
+          previous.copyWith(
+            syncing: false,
+            syncError: 'Couldn’t sync. Check your connection.',
+          ),
+        );
+      } else {
+        emit(LocationsState.failure(e.toString()));
+      }
     }
   }
 

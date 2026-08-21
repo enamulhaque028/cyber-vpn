@@ -12,4 +12,5 @@ sealed class LocationsEvent with _$LocationsEvent {
       LocationsFavoriteToggled;
   const factory LocationsEvent.recentRemembered(int id) =
       LocationsRecentRemembered;
+  const factory LocationsEvent.syncRequested() = LocationsSyncRequested;
 }

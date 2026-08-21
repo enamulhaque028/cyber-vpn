@@ -123,6 +123,40 @@ App cold start
   → write prefs for offline / CDN blips
 ```
 
+### When the app hits the network vs cache
+
+Order inside `HttpLocationsRepository._loadCatalog`: **memory → SharedPreferences → network**.  
+`getCredentials` and `getLocations` share one in-flight catalog fetch.
+
+**Calls API** (jsDelivr, then raw GitHub). On success, rewrites memory + prefs:
+
+| # | Case |
+|---|------|
+| 1 | No memory **and** no valid prefs (first install, cleared app data, bad cache) |
+| 2 | Connect **timeout** while connecting — **once** (`forceRefresh: true` via `SessionBloc` / `didRefreshOnFailure`) |
+| 3 | **Manual sync** — Locations pull-to-refresh / app-bar sync, or Settings → **Sync server list** (`LocationsEvent.syncRequested` → `syncFromNetwork()`). Throws on failure and **keeps** the old cache (unlike timeout refresh, which may fall back silently). |
+
+Splash / `LocationsEvent.started()` uses `forceRefresh: false` (cache-first).
+
+**Uses cache only** (no catalog API):
+
+| # | Case |
+|---|------|
+| 1 | Memory already holds the catalog this process |
+| 2 | Prefs have a good catalog (normal relaunch, Locations open, Session bootstrap) |
+| 3 | Search / favorites / recents / ping (never fetch the catalog) |
+| 4 | Second connect-timeout in the same attempt (`didRefreshOnFailure` already true) |
+
+**Special:**
+
+| Situation | Behavior |
+|-----------|----------|
+| API fails | Keep old memory/prefs; do not wipe |
+| API returns empty `servers` | Do not overwrite prefs server list |
+| CDN/`main` updated on GitHub | App does **not** see it until case 1, 2, or **3** (manual sync) above |
+
+Deferred: **TTL** auto-refresh — STATUS → Explicitly later. Manual sync is shipped.
+
 Current slug in code:
 
 ```dart
@@ -240,4 +274,4 @@ Deleted: `lib/features/locations/data/supabase_locations_repository.dart`
 - **VPN Gate** exits are community relays: volatile, uneven quality, and sometimes blocked from certain networks.
 - **jsDelivr branch cache** can be sticky; the workflow purges after each successful publish. Raw GitHub is the app’s safety net.
 - Do **not** treat this as a first-party VPN network. Own WireGuard fleet remains a later project.
-- **Cache refresh (deferred):** App keeps prefs until connect-timeout `forceRefresh` or data clear — CDN updates are not picked up automatically. Tracked under STATUS → Explicitly later.
+- **Cache refresh:** Manual sync is shipped. **TTL** auto-refresh remains deferred (STATUS). See [When the app hits the network vs cache](#when-the-app-hits-the-network-vs-cache).

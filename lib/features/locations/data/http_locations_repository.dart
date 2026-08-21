@@ -7,10 +7,7 @@ import 'package:dio/dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class _FleetCatalog {
-  const _FleetCatalog({
-    required this.credentials,
-    required this.servers,
-  });
+  const _FleetCatalog({required this.credentials, required this.servers});
 
   final VpnCredentials credentials;
   final List<VpnLocation> servers;
@@ -19,14 +16,15 @@ class _FleetCatalog {
 /// Fetches [AppConfig.fleetCatalogUrl] (jsDelivr) with raw GitHub fallback.
 class HttpLocationsRepository implements LocationsRepository {
   HttpLocationsRepository(this._prefs, [Dio? dio])
-      : _dio = dio ??
-            Dio(
-              BaseOptions(
-                connectTimeout: const Duration(seconds: 12),
-                receiveTimeout: const Duration(seconds: 15),
-                headers: {Headers.acceptHeader: Headers.jsonContentType},
-              ),
-            );
+    : _dio =
+          dio ??
+          Dio(
+            BaseOptions(
+              connectTimeout: const Duration(seconds: 12),
+              receiveTimeout: const Duration(seconds: 15),
+              headers: {Headers.acceptHeader: Headers.jsonContentType},
+            ),
+          );
 
   final SharedPreferences _prefs;
   final Dio _dio;
@@ -51,10 +49,7 @@ class HttpLocationsRepository implements LocationsRepository {
   Future<_FleetCatalog> _loadCatalog({required bool forceRefresh}) async {
     if (!forceRefresh) {
       if (_credentials != null && _locations != null) {
-        return _FleetCatalog(
-          credentials: _credentials!,
-          servers: _locations!,
-        );
+        return _FleetCatalog(credentials: _credentials!, servers: _locations!);
       }
       final fromPrefs = _readPrefsCatalog();
       if (fromPrefs != null) {
@@ -87,10 +82,7 @@ class HttpLocationsRepository implements LocationsRepository {
       return catalog;
     } catch (_) {
       if (_credentials != null && _locations != null) {
-        return _FleetCatalog(
-          credentials: _credentials!,
-          servers: _locations!,
-        );
+        return _FleetCatalog(credentials: _credentials!, servers: _locations!);
       }
       final fromPrefs = _readPrefsCatalog();
       if (fromPrefs != null) {
@@ -100,6 +92,19 @@ class HttpLocationsRepository implements LocationsRepository {
       }
       rethrow;
     }
+  }
+
+  @override
+  Future<({VpnCredentials credentials, List<VpnLocation> servers})>
+  syncFromNetwork() async {
+    final catalog = await _downloadCatalog();
+    if (catalog.servers.isEmpty) {
+      throw StateError('Catalog contained no servers');
+    }
+    _credentials = catalog.credentials;
+    _locations = catalog.servers;
+    await _writePrefs(catalog);
+    return (credentials: catalog.credentials, servers: catalog.servers);
   }
 
   Future<_FleetCatalog> _downloadCatalog() async {
@@ -159,7 +164,9 @@ class HttpLocationsRepository implements LocationsRepository {
     } else if (data is String) {
       map = Map<String, dynamic>.from(jsonDecode(data) as Map);
     } else {
-      throw FormatException('Unexpected fleet catalog payload: ${data.runtimeType}');
+      throw FormatException(
+        'Unexpected fleet catalog payload: ${data.runtimeType}',
+      );
     }
 
     final credsRaw = map['credentials'];
@@ -175,9 +182,7 @@ class HttpLocationsRepository implements LocationsRepository {
       Map<String, dynamic>.from(credsRaw),
     );
     final servers = serversRaw
-        .map(
-          (e) => VpnLocation.fromJson(Map<String, dynamic>.from(e as Map)),
-        )
+        .map((e) => VpnLocation.fromJson(Map<String, dynamic>.from(e as Map)))
         .toList();
     return _FleetCatalog(credentials: credentials, servers: servers);
   }
@@ -197,9 +202,7 @@ class HttpLocationsRepository implements LocationsRepository {
       );
       final list = jsonDecode(serversCached) as List<dynamic>;
       final servers = list
-          .map(
-            (e) => VpnLocation.fromJson(Map<String, dynamic>.from(e as Map)),
-          )
+          .map((e) => VpnLocation.fromJson(Map<String, dynamic>.from(e as Map)))
           .toList();
       if (servers.isEmpty) return null;
       return _FleetCatalog(credentials: credentials, servers: servers);

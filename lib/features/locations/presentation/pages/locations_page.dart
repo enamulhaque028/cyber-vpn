@@ -4,6 +4,7 @@ import 'package:cyber_vpn/app/router.dart';
 import 'package:cyber_vpn/core/widgets/ping_bar.dart';
 import 'package:cyber_vpn/features/locations/domain/entities/vpn_location.dart';
 import 'package:cyber_vpn/features/locations/presentation/bloc/locations_bloc.dart';
+import 'package:cyber_vpn/features/locations/presentation/locations_sync.dart';
 import 'package:cyber_vpn/features/session/presentation/bloc/session_bloc.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -29,6 +30,29 @@ class LocationsPage extends StatelessWidget {
       child: Scaffold(
         appBar: AppBar(
           title: const Text('Locations'),
+          actions: [
+            BlocBuilder<LocationsBloc, LocationsState>(
+              buildWhen: (p, n) =>
+                  (p is LocationsLoaded && p.syncing) !=
+                  (n is LocationsLoaded && n.syncing),
+              builder: (context, state) {
+                final syncing = state is LocationsLoaded && state.syncing;
+                return IconButton(
+                  tooltip: 'Sync servers',
+                  onPressed: syncing
+                      ? null
+                      : () => syncLocationsCatalog(context),
+                  icon: syncing
+                      ? const SizedBox(
+                          width: 22,
+                          height: 22,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.sync),
+                );
+              },
+            ),
+          ],
           bottom: const TabBar(
             tabs: [
               Tab(text: 'All'),
@@ -44,7 +68,20 @@ class LocationsPage extends StatelessWidget {
                 child: CircularProgressIndicator(),
               ),
               LocationsFailure(:final message) => Center(
-                child: Text(message),
+                child: Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(message, textAlign: TextAlign.center),
+                      const SizedBox(height: 16),
+                      FilledButton.tonal(
+                        onPressed: () => syncLocationsCatalog(context),
+                        child: const Text('Retry sync'),
+                      ),
+                    ],
+                  ),
+                ),
               ),
               LocationsLoaded(
                 :final all,
@@ -52,6 +89,7 @@ class LocationsPage extends StatelessWidget {
                 :final rttMs,
                 :final favoriteIds,
                 :final recentIds,
+                :final syncing,
               ) =>
                 TabBarView(
                   children: [
@@ -59,6 +97,7 @@ class LocationsPage extends StatelessWidget {
                       visible: visible,
                       rttMs: rttMs,
                       favoriteIds: favoriteIds,
+                      syncing: syncing,
                       onSelect: (loc) => _select(context, loc),
                       onToggleFavorite: (id) => context
                           .read<LocationsBloc>()
@@ -66,6 +105,7 @@ class LocationsPage extends StatelessWidget {
                       onQueryChanged: (q) => context.read<LocationsBloc>().add(
                         LocationsEvent.queryChanged(q),
                       ),
+                      onRefresh: () => syncLocationsCatalog(context),
                     ),
                     _FilteredListTab(
                       emptyMessage: 'Star a location to save it here.',
@@ -79,6 +119,7 @@ class LocationsPage extends StatelessWidget {
                       onToggleFavorite: (id) => context
                           .read<LocationsBloc>()
                           .add(LocationsEvent.favoriteToggled(id)),
+                      onRefresh: () => syncLocationsCatalog(context),
                     ),
                     _FilteredListTab(
                       emptyMessage: 'Locations you pick will show up here.',
@@ -92,6 +133,7 @@ class LocationsPage extends StatelessWidget {
                       onToggleFavorite: (id) => context
                           .read<LocationsBloc>()
                           .add(LocationsEvent.favoriteToggled(id)),
+                      onRefresh: () => syncLocationsCatalog(context),
                     ),
                   ],
                 ),
@@ -115,22 +157,27 @@ class _AllTab extends StatelessWidget {
     required this.visible,
     required this.rttMs,
     required this.favoriteIds,
+    required this.syncing,
     required this.onSelect,
     required this.onToggleFavorite,
     required this.onQueryChanged,
+    required this.onRefresh,
   });
 
   final List<VpnLocation> visible;
   final Map<int, int?> rttMs;
   final List<int> favoriteIds;
+  final bool syncing;
   final void Function(VpnLocation) onSelect;
   final void Function(int) onToggleFavorite;
   final void Function(String) onQueryChanged;
+  final Future<void> Function() onRefresh;
 
   @override
   Widget build(BuildContext context) {
     return Column(
       children: [
+        if (syncing) const LinearProgressIndicator(minHeight: 2),
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
           child: TextField(
@@ -143,15 +190,19 @@ class _AllTab extends StatelessWidget {
           ),
         ),
         Expanded(
-          child: ListView.separated(
-            itemCount: visible.length,
-            separatorBuilder: (_, _) => const Divider(height: 1),
-            itemBuilder: (context, index) => _LocationTile(
-              loc: visible[index],
-              rttMs: rttMs,
-              favorite: favoriteIds.contains(visible[index].id),
-              onSelect: onSelect,
-              onToggleFavorite: onToggleFavorite,
+          child: RefreshIndicator(
+            onRefresh: onRefresh,
+            child: ListView.separated(
+              physics: const AlwaysScrollableScrollPhysics(),
+              itemCount: visible.length,
+              separatorBuilder: (_, _) => const Divider(height: 1),
+              itemBuilder: (context, index) => _LocationTile(
+                loc: visible[index],
+                rttMs: rttMs,
+                favorite: favoriteIds.contains(visible[index].id),
+                onSelect: onSelect,
+                onToggleFavorite: onToggleFavorite,
+              ),
             ),
           ),
         ),
@@ -168,6 +219,7 @@ class _FilteredListTab extends StatelessWidget {
     required this.favoriteIds,
     required this.onSelect,
     required this.onToggleFavorite,
+    required this.onRefresh,
   });
 
   final String emptyMessage;
@@ -176,37 +228,45 @@ class _FilteredListTab extends StatelessWidget {
   final List<int> favoriteIds;
   final void Function(VpnLocation) onSelect;
   final void Function(int) onToggleFavorite;
+  final Future<void> Function() onRefresh;
 
   @override
   Widget build(BuildContext context) {
-    if (locations.isEmpty) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Text(
-            emptyMessage,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: Theme.of(context).colorScheme.secondary,
-              height: 1.4,
+    return RefreshIndicator(
+      onRefresh: onRefresh,
+      child: locations.isEmpty
+          ? ListView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              children: [
+                SizedBox(
+                  height: MediaQuery.sizeOf(context).height * 0.4,
+                  child: Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(24),
+                      child: Text(
+                        emptyMessage,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.secondary,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            )
+          : ListView.separated(
+              physics: const AlwaysScrollableScrollPhysics(),
+              itemCount: locations.length,
+              separatorBuilder: (_, _) => const Divider(height: 1),
+              itemBuilder: (context, index) => _LocationTile(
+                loc: locations[index],
+                rttMs: rttMs,
+                favorite: favoriteIds.contains(locations[index].id),
+                onSelect: onSelect,
+                onToggleFavorite: onToggleFavorite,
+              ),
             ),
-          ),
-        ),
-      );
-    }
-    return ListView.separated(
-      itemCount: locations.length,
-      separatorBuilder: (_, _) => const Divider(height: 1),
-      itemBuilder: (context, index) {
-        final loc = locations[index];
-        return _LocationTile(
-          loc: loc,
-          rttMs: rttMs,
-          favorite: favoriteIds.contains(loc.id),
-          onSelect: onSelect,
-          onToggleFavorite: onToggleFavorite,
-        );
-      },
     );
   }
 }

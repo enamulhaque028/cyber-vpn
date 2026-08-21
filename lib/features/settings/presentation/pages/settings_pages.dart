@@ -1,6 +1,8 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:cyber_vpn/app/router.dart';
 import 'package:cyber_vpn/core/config/app_config.dart';
+import 'package:cyber_vpn/features/locations/presentation/bloc/locations_bloc.dart';
+import 'package:cyber_vpn/features/locations/presentation/locations_sync.dart';
 import 'package:cyber_vpn/features/session/presentation/bloc/session_bloc.dart';
 import 'package:cyber_vpn/features/settings/presentation/bloc/theme_cubit.dart';
 import 'package:flutter/foundation.dart';
@@ -133,6 +135,29 @@ class SettingsPage extends StatelessWidget {
             ),
             trailing: const Icon(Icons.chevron_right),
             onTap: () => context.router.push(const HistoryRoute()),
+          ),
+          BlocBuilder<LocationsBloc, LocationsState>(
+            buildWhen: (p, n) =>
+                (p is LocationsLoaded && p.syncing) !=
+                (n is LocationsLoaded && n.syncing),
+            builder: (context, locations) {
+              final syncing = locations is LocationsLoaded && locations.syncing;
+              return ListTile(
+                title: const Text('Sync server list'),
+                subtitle: Text(
+                  'Download the latest catalog from the CDN and refresh the on-device cache.',
+                  style: TextStyle(color: scheme.secondary),
+                ),
+                trailing: syncing
+                    ? const SizedBox(
+                        width: 22,
+                        height: 22,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.sync),
+                onTap: syncing ? null : () => syncLocationsCatalog(context),
+              );
+            },
           ),
           ListTile(
             title: const Text('Connection check'),
