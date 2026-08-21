@@ -1,6 +1,6 @@
 import 'package:cyber_vpn/app/router.dart';
 import 'package:cyber_vpn/core/config/app_config.dart';
-import 'package:cyber_vpn/features/locations/data/supabase_locations_repository.dart';
+import 'package:cyber_vpn/features/locations/data/http_locations_repository.dart';
 import 'package:cyber_vpn/features/locations/data/tcp_server_probe.dart';
 import 'package:cyber_vpn/features/locations/domain/repositories/locations_repository.dart';
 import 'package:cyber_vpn/features/locations/domain/repositories/server_probe.dart';
@@ -43,7 +43,7 @@ Future<void> configureDependencies() async {
       () => ExitIpApi(getIt(), baseUrl: AppConfig.exitIpBaseUrl),
     )
     ..registerLazySingleton<LocationsRepository>(
-      () => SupabaseLocationsRepository(getIt()),
+      () => HttpLocationsRepository(getIt()),
     )
     ..registerLazySingleton<ServerProbe>(TcpServerProbe.new)
     ..registerLazySingleton<InstalledAppsRepository>(

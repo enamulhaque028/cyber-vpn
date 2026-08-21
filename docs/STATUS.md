@@ -1,22 +1,22 @@
 # Status — Cyber VPN
 
-**Last updated:** 20 August 2026  
+**Last updated:** 21 August 2026  
 **Repo:** `cyber-vpn` (new app). Turbo Secure is `flutter_vpn` — reference only.  
-**Verdict:** OpenVPN client with kill switch, threat/stats/ping, **exit check**, **favorites/recents**, **session history**, **Android app bypass (exclude split)**. **Not store-ready.** IAP deferred.
+**Verdict:** OpenVPN client with kill switch, threat/stats/ping, **exit check**, **favorites/recents**, **session history**, **Android app bypass (exclude split)**. Locations from **GitHub fleet catalog** (jsDelivr). **Not store-ready.** IAP deferred.
 
 ---
 
 ## Locked decisions (do not reopen unless the user says so)
 
 - New app, new bundle IDs — not a reskin of Turbo Secure.
-- Feature folders: `domain` / `data` / `presentation`. UI must not import Supabase, axevpn, or (later) RevenueCat/AdMob.
+- Feature folders: `domain` / `data` / `presentation`. UI must not import catalog HTTP details, axevpn, or (later) RevenueCat/AdMob.
 - State: **flutter_bloc** (`Bloc` for tunnel/locations/purchases/minutes; `Cubit` for tiny UI like theme).
 - Models + Bloc events/states: **Freezed**. JSON: **json_serializable**.
 - DI: **GetIt**, manual registration in `lib/app/di.dart`. **No Injectable.**
 - Navigation: **auto_route**.
 - Theme: light **and** dark; default `ThemeMode.system`; Settings override.
 - Tunnel plugin: **axevpn_flutter** (OpenVPN). Wrap in `TunnelRepository`.
-- MVP servers: **same Supabase OpenVPN fleet as Turbo Secure**. Fleet/WireGuard is a later project.
+- MVP servers: **GitHub `fleet/catalog.json`** (vpnbook + curated VPN Gate), served via jsDelivr with raw GitHub fallback. Own WireGuard/fleet hosting is a later project.
 - Monetization model (plan): freemium + rewarded minutes + soft paywall + subscriptions. Not a hard lock on first open. **Implementation deferred** until tunnel/product slices below IAP.
 - Forbidden: UXCam, `badCertificateCallback: true`, unused `.ovpn` private keys in the binary, logging destination IPs/DNS/payloads.
 
@@ -40,7 +40,7 @@ Shipped behavior with details: **[FEATURES.md](FEATURES.md)**.
 
 - Flutter app `cyber_vpn`, Android `com.cybervpn.cyber_vpn` (minSdk 24), iOS `com.cybervpn.cyberVpn`.
 - GetIt + BlocProvider at app root.
-- `LocationsRepository` → Supabase `vpn_config` / `vpn_servers`, memory + SharedPreferences cache; `forceRefresh` on connect timeout (one retry, then “try another location”).
+- `LocationsRepository` → `HttpLocationsRepository` fetches `fleet/catalog.json` (jsDelivr → raw GitHub fallback); memory + SharedPreferences cache; `forceRefresh` on connect timeout (one retry, then “try another location”). Daily GitHub Actions ingest (`tool/fleet/build_catalog.py`). VPN Gate relays are volatile free community exits — expect churn. Full write-up + **your next steps:** [FLEET_CATALOG.md](FLEET_CATALOG.md).
 - `TunnelRepository` → `OpenVPN` from `axevpn_flutter`. Home bootstraps `SessionBloc` from current locations (not only later emissions).
 - Kill switch (best-effort OpenVPN): `OpenVpnKillSwitch` patches client config with `persist-tun`, `persist-key`, `ping` / `ping-restart`, `block-ipv6` when enabled. Unexpected drop or path change while Protect is intended → backoff reconnect (max 5). User disconnect does not reconnect.
 - Android: VPN permission `onActivityResult`, `extractNativeLibs`, 16 KB page-size flags, JNI `pickFirst` for WireGuard `.so` clash, `OpenVPNService` + `VpnService` intent-filter, Always-on row via MethodChannel `com.cybervpn.cyber_vpn/device` (VPN settings + fallbacks; `<queries>` for API 30+).
@@ -63,7 +63,7 @@ Shipped behavior with details: **[FEATURES.md](FEATURES.md)**.
 | iOS extension | `com.cybervpn.cyberVpn.VPNExtension` |
 | App Group | `group.com.cybervpn.cyberVpn` |
 | Android applicationId | `com.cybervpn.cyber_vpn` |
-| Supabase | URL/key in `lib/core/config/app_config.dart` (same project as Turbo) |
+| Fleet catalog | `AppConfig.fleetCatalogUrl` (jsDelivr) + `fleetCatalogFallbackUrl` (raw GitHub); slug `AppConfig.fleetGithubSlug` |
 | Privacy / terms | Still Turbo Secure Google Sites URLs — replace before store |
 
 ---

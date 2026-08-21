@@ -205,7 +205,7 @@ Bypassed apps on public Wi‑Fi are **unprotected by design**.
 | Feature | Details |
 |---------|---------|
 | Protocol | OpenVPN via `axevpn_flutter`, wrapped in `TunnelRepository`. |
-| Servers | Same Supabase `vpn_servers` / `vpn_config` fleet as Turbo Secure. Cache: memory → SharedPreferences → network. |
+| Servers | GitHub `fleet/catalog.json` via jsDelivr (+ raw GitHub fallback): vpnbook + curated VPN Gate. Cache: memory → SharedPreferences → network. Free Gate relays are volatile. |
 | Connect timeout | First miss: refresh list and retry once. Second miss: “try another location.” |
 | Android VPN permission | System VPN consent; `MainActivity` `requestCode` 24. |
 | iOS | Packet Tunnel `VPNExtension`, App Group `group.com.cybervpn.cyberVpn`. |
@@ -223,7 +223,7 @@ Bypassed apps on public Wi‑Fi are **unprotected by design**.
 
 ## Explicitly not shipped yet
 
-Subscriptions, minutes, ads, real IAP gate on premium cities, Crashlytics, honest privacy URLs, WireGuard / new fleet. Android **include-only** / IP split / iOS per-app VPN (exclude-list bypass is shipped — see above).
+Subscriptions, minutes, ads, real IAP gate on premium cities, Crashlytics, honest privacy URLs, own WireGuard / first-party fleet hosting. Android **include-only** / IP split / iOS per-app VPN (exclude-list bypass is shipped — see above).
 
 ---
 

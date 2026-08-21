@@ -2,9 +2,16 @@ class AppConfig {
   AppConfig._();
 
   static const appName = 'Cyber VPN';
-  static const supabaseUrl = 'https://coiahkfbvfhkebqickhz.supabase.co';
-  static const supabaseAnonKey =
-      'sb_publishable_SBLULdgEl4pZba5eHt_Lyw_hIGOZISe';
+
+  /// `owner/repo` for the published [fleet/catalog.json] on GitHub `main`.
+  /// Must match the remote the fleet workflow pushes to.
+  static const fleetGithubSlug = 'enamulhaque028/cyber-vpn';
+
+  static const fleetCatalogUrl =
+      'https://cdn.jsdelivr.net/gh/$fleetGithubSlug@main/fleet/catalog.json';
+  static const fleetCatalogFallbackUrl =
+      'https://raw.githubusercontent.com/$fleetGithubSlug/main/fleet/catalog.json';
+
   static const privacyPolicyUrl =
       'https://sites.google.com/view/audacityitvpn/privacy-policy?pli=1';
   static const termsUrl =
