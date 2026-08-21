@@ -113,11 +113,7 @@ class _ConnectRingState extends State<ConnectRing>
   List<String> _arcMicroLines() {
     final loc = widget.locationLabel?.trim();
     final place = (loc == null || loc.isEmpty) ? 'server' : loc;
-    return [
-      'Securing tunnel…',
-      'Encrypting packet…',
-      'Handshake with $place…',
-    ];
+    return ['Securing tunnel…', 'Encrypting packet…', 'Handshake with $place…'];
   }
 
   @override
@@ -240,12 +236,14 @@ class _ConnectRingState extends State<ConnectRing>
         ? AppColors.inactiveOutline
         : AppColors.inactiveOutlineLight;
 
-    final pressScale = Tween<double>(begin: 1, end: 0.95).animate(
-      CurvedAnimation(parent: _press, curve: _ease),
-    );
-    final breathScale = Tween<double>(begin: 1, end: 1.03).animate(
-      CurvedAnimation(parent: _breath, curve: Curves.easeInOut),
-    );
+    final pressScale = Tween<double>(
+      begin: 1,
+      end: 0.95,
+    ).animate(CurvedAnimation(parent: _press, curve: _ease));
+    final breathScale = Tween<double>(
+      begin: 1,
+      end: 1.03,
+    ).animate(CurvedAnimation(parent: _breath, curve: Curves.easeInOut));
 
     final label = _statusLabel();
     final filled = widget.phase == ConnectRingPhase.protected;
@@ -270,12 +268,9 @@ class _ConnectRingState extends State<ConnectRing>
           _labelFade,
         ]),
         builder: (context, _) {
-          final scale =
-              pressScale.value * (isIdle ? breathScale.value : 1.0);
+          final scale = pressScale.value * (isIdle ? breathScale.value : 1.0);
           final shieldSize = _shieldBox;
-          final groupNudge = filled
-              ? -4.0
-              : (isConnecting ? -6.0 : 0.0);
+          final groupNudge = filled ? -4.0 : (isConnecting ? -6.0 : 0.0);
           return Transform.scale(
             scale: scale,
             child: SizedBox(
@@ -369,8 +364,9 @@ class _ConnectRingState extends State<ConnectRing>
                                         shieldSize * 0.24,
                                       ),
                                       painter: _CheckPainter(
-                                        progress: Curves.easeOutCubic
-                                            .transform(_check.value),
+                                        progress: Curves.easeOutCubic.transform(
+                                          _check.value,
+                                        ),
                                         color: const Color(0xFF031510),
                                       ),
                                     ),
@@ -388,9 +384,7 @@ class _ConnectRingState extends State<ConnectRing>
                                 textAlign: TextAlign.center,
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .titleMedium
+                                style: Theme.of(context).textTheme.titleMedium
                                     ?.copyWith(
                                       fontWeight: FontWeight.w700,
                                       letterSpacing: isConnecting ? 0.4 : -0.2,
@@ -552,20 +546,42 @@ class _ConnectRingPainter extends CustomPainter {
 
   void _paintIdle(Canvas canvas, Offset c, double r) {
     final pulse = breath;
+    // Soft radial core — quieter so concentric strokes stay the focus.
     canvas.drawCircle(
       c,
-      r * 0.55,
+      r * 0.42,
       Paint()
-        ..color = accent.withValues(alpha: 0.18 + 0.1 * pulse)
-        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 40),
+        ..color = accent.withValues(alpha: 0.14 + 0.08 * pulse)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 36),
     );
     canvas.drawCircle(
       c,
-      r * 0.28,
+      r * 0.2,
       Paint()
-        ..color = accent.withValues(alpha: 0.22 + 0.12 * pulse)
-        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 22),
+        ..color = accent.withValues(alpha: 0.16 + 0.1 * pulse)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 18),
     );
+
+    // Quiet concentric depth rings (calm standby — not connecting HUD).
+    final midPulse = (1 - pulse); // slightly out of phase with outer.
+    canvas.drawCircle(
+      c,
+      r * (0.58 + 0.01 * pulse),
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.15
+        ..color = accent.withValues(alpha: 0.12 + 0.1 * midPulse),
+    );
+    canvas.drawCircle(
+      c,
+      r * (0.78 + 0.008 * pulse),
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.35
+        ..color = accent.withValues(alpha: 0.22 + 0.12 * pulse),
+    );
+
+    // Outer neon hero ring + bloom.
     canvas.drawCircle(
       c,
       r,
@@ -702,10 +718,7 @@ class _ConnectRingPainter extends CustomPainter {
       canvas.translate(pos.dx, pos.dy);
       final rot = (angle + math.pi / 2).clamp(-0.55, 0.55);
       canvas.rotate(rot);
-      painter.paint(
-        canvas,
-        Offset(-painter.width / 2, -painter.height / 2),
-      );
+      painter.paint(canvas, Offset(-painter.width / 2, -painter.height / 2));
       canvas.restore();
     }
   }
@@ -831,10 +844,7 @@ class _ConnectRingPainter extends CustomPainter {
         text: ch,
         style: style.copyWith(
           shadows: [
-            Shadow(
-              color: accent.withValues(alpha: 0.35),
-              blurRadius: 4,
-            ),
+            Shadow(color: accent.withValues(alpha: 0.35), blurRadius: 4),
           ],
         ),
       );
