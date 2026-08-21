@@ -707,7 +707,7 @@ class _ConnectRingPainter extends CustomPainter {
       painter.text = TextSpan(
         text: arcLines[i],
         style: TextStyle(
-          color: accent.withValues(alpha: active ? 0.9 : 0.4),
+          color: accent.withValues(alpha: active ? 0.95 : 0.4),
           fontSize: active ? 8.5 : 7.5,
           fontWeight: active ? FontWeight.w600 : FontWeight.w500,
           letterSpacing: 0.15,
