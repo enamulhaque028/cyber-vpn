@@ -1,0 +1,48 @@
+name: Fleet catalog
+
+on:
+  schedule:
+    - cron: "0 6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install -r tool/fleet/requirements.txt
+
+      - name: Build catalog
+        env:
+          VPNBOOK_USERNAME: ${{ secrets.VPNBOOK_USERNAME }}
+          VPNBOOK_PASSWORD: ${{ secrets.VPNBOOK_PASSWORD }}
+        run: python tool/fleet/build_catalog.py
+
+      - name: Commit if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add fleet/catalog.json fleet/catalog.meta.json
+          if git diff --staged --quiet; then
+            echo "No catalog changes"
+          else
+            git commit -m "chore(fleet): refresh catalog [skip ci]"
+            git push
+          fi
+
+      - name: Purge jsDelivr
+        run: |
+          url="https://purge.jsdelivr.net/gh/${{ github.repository }}@main/fleet/catalog.json"
+          echo "Purging ${url}"
+          curl -fsS "$url" || echo "jsDelivr purge returned non-zero (non-fatal)"

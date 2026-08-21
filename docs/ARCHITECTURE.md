@@ -6,7 +6,7 @@ Keep this small. Prefer extending existing features over new packages.
 
 ```
 lib/
-  main.dart                 # Flutter + Supabase + configureDependencies()
+  main.dart                 # Flutter + configureDependencies()
   app/
     app.dart                # MaterialApp.router + BlocProviders
     di.dart                 # GetIt registrations
@@ -40,17 +40,19 @@ lib/
       domain/open_vpn_remote.dart
       domain/repositories/locations_repository.dart
       domain/repositories/server_probe.dart
-      data/supabase_locations_repository.dart
+      data/http_locations_repository.dart
       data/tcp_server_probe.dart
       presentation/
     settings/               # ThemeCubit; bypass_apps + paywall pages
 ```
 
+Fleet publish lives outside `lib/`: `fleet/catalog.json` (built by `tool/fleet/build_catalog.py` + `.github/workflows/fleet-catalog.yml`).
+
 Add **`features/subscription/`** and **`features/minutes/`** as new vertical slices (plan). Do not put RevenueCat or AdMob in `HomePage`.
 
 ## Rules
 
-- Pages dispatch events and render states. No `Supabase.instance` or `OpenVPN` in widgets.
+- Pages dispatch events and render states. No catalog HTTP clients or `OpenVPN` in widgets.
 - Register new repos as `LazySingleton` in `di.dart`; Blocs as `Factory`; provide Blocs with `BlocProvider` in `app.dart`.
 - Session is the only tunnel source of truth (`SessionBloc`). Locations listen; they do not keep a second `vpnInfo`.
 - Home must start the session from the **current** `LocationsBloc` state (splash often finishes fetch before Home mounts).
@@ -76,7 +78,7 @@ Do not hand-edit generated files. They are **gitignored** (`*.freezed.dart`, `*.
 
 ## Stack (current)
 
-`flutter_bloc`, `freezed`, `get_it`, `auto_route`, `axevpn_flutter` ^2, `supabase_flutter`, `shared_preferences`, `connectivity_plus`, `google_fonts`, `cached_network_image`, `url_launcher`, `fl_chart`, `dio`, `retrofit`.
+`flutter_bloc`, `freezed`, `get_it`, `auto_route`, `axevpn_flutter` ^2, `shared_preferences`, `connectivity_plus`, `google_fonts`, `cached_network_image`, `url_launcher`, `fl_chart`, `dio`, `retrofit`.
 
 Swift Package Manager is **disabled** in `pubspec.yaml` because `axevpn_flutter` does not support it.
 
