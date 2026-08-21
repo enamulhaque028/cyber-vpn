@@ -161,7 +161,24 @@ class SessionBloc extends Bloc<SessionEvent, SessionState> {
     try {
       await _ensureTunnel();
     } catch (e) {
+      _intended = false;
       emit(state.copyWith(phase: SessionPhase.failed, message: e.toString()));
+      return;
+    }
+
+    final path = await _connectivity.checkConnectivity();
+    final kind = kindFrom(path);
+    if (kind == NetworkKind.none) {
+      _intended = false;
+      _connectTimer?.cancel();
+      emit(
+        state.copyWith(
+          phase: SessionPhase.failed,
+          networkKind: kind,
+          reconnecting: false,
+          message: 'No internet connection. Check Wi‑Fi or mobile data.',
+        ),
+      );
       return;
     }
 
