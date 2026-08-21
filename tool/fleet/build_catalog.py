@@ -13,6 +13,7 @@ import re
 import sys
 import time
 from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
 from pathlib import Path
 from typing import Any
 from urllib.parse import urlencode
@@ -23,6 +24,8 @@ ROOT = Path(__file__).resolve().parents[2]
 OUT_DIR = ROOT / "fleet"
 CATALOG_PATH = OUT_DIR / "catalog.json"
 META_PATH = OUT_DIR / "catalog.meta.json"
+BD_TZ = ZoneInfo("Asia/Dhaka")
+
 
 UA = (
     "Mozilla/5.0 (compatible; CyberVpnFleetBot/1.0; "
@@ -201,8 +204,8 @@ def build_vpnbook_servers(html: str) -> list[dict[str, Any]]:
                     "title": title,
                     "flagUrl": flag_url(short),
                     "config": config,
-                    "networkFlagUrl": "",
                     "isPremium": False,
+                    "source": "vpnbook",
                 }
             )
             time.sleep(0.12)
@@ -272,8 +275,8 @@ def build_vpngate_servers() -> list[dict[str, Any]]:
             "title": f"vpngate-{host_name or ip}",
             "flagUrl": flag_url(country_short),
             "config": config,
-            "networkFlagUrl": "",
             "isPremium": False,
+            "source": "vpngate",
             "_score": score,
             "_ip": ip,
             "_key": f"{ip}:{host_name}",
@@ -310,18 +313,27 @@ def load_credentials(html: str) -> dict[str, Any]:
     }
 
 
+def format_updated_at_bd(updated_at_utc: str) -> str:
+    """Human-readable Asia/Dhaka time, e.g. 2026-08-21 02:38:12 PM BST."""
+    dt = datetime.fromisoformat(updated_at_utc.replace("Z", "+00:00"))
+    return dt.astimezone(BD_TZ).strftime("%Y-%m-%d %I:%M:%S %p BST")
+
+
 def write_outputs(catalog: dict[str, Any]) -> None:
     OUT_DIR.mkdir(parents=True, exist_ok=True)
-    payload = json.dumps(catalog, separators=(",", ":"), ensure_ascii=False)
+    payload = json.dumps(catalog, indent=2, ensure_ascii=False)
     CATALOG_PATH.write_text(payload + "\n", encoding="utf-8")
     digest = hashlib.sha256(payload.encode("utf-8")).hexdigest()
+    updated_at = catalog["updatedAt"]
     meta = {
-        "updatedAt": catalog["updatedAt"],
+        "updatedAt": updated_at,
+        "updatedAtBd": format_updated_at_bd(updated_at),
         "serverCount": len(catalog["servers"]),
         "sha256": digest,
     }
     META_PATH.write_text(json.dumps(meta, indent=2) + "\n", encoding="utf-8")
     print(f"wrote {CATALOG_PATH} ({len(catalog['servers'])} servers, sha256={digest[:12]}…)")
+    print(f"  updatedAtBd: {meta['updatedAtBd']}")
 
 
 def main() -> int:
@@ -342,7 +354,7 @@ def main() -> int:
     vpngate = build_vpngate_servers()
     print(f"  vpngate: {len(vpngate)}")
 
-    servers = vpnbook + vpngate
+    servers = vpnbook + vpngate  # vpnbook first, then VPN Gate
     if not servers:
         print("error: zero servers — refusing to publish empty catalog", file=sys.stderr)
         return 1
