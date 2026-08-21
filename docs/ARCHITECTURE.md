@@ -61,7 +61,7 @@ Add **`features/subscription/`** and **`features/minutes/`** as new vertical sli
 - Exit check uses **HTTPS** (`AppConfig.exitIpBaseUrl` via Dio + Retrofit). Never Turbo-style plain HTTP ip-api. Do not log exit IPs.
 - Session history and favorites/recents are SharedPreferences only (on-device).
 - **Split tunnel:** Android exclude apps shipped via `OpenVPN.connect(bypassPackages: …)` + Settings picker (`InstalledAppsRepository` / MAIN+LAUNCHER queries). Mutually exclusive with “Block connections without VPN” as max leak protection. No iOS consumer per-app VPN. Include-only / IP routes deferred.
-- Cache-first locations: memory → SharedPreferences → network. Refresh on connect **timeout** once (`didRefreshOnFailure`). Full API-vs-cache cases: [FLEET_CATALOG.md — When the app hits the network vs cache](FLEET_CATALOG.md#when-the-app-hits-the-network-vs-cache).
+- Cache-first locations: memory → SharedPreferences → network. Refresh on connect **timeout** once (`didRefreshOnFailure`). Manual sync: Locations pull-to-refresh / sync action + Settings → Sync server list. Full cases: [FLEET_CATALOG.md — When the app hits the network vs cache](FLEET_CATALOG.md#when-the-app-hits-the-network-vs-cache).
 - iOS tunnel ids must stay in sync with `AppConfig.iosAppGroup` and `iosVpnExtensionBundleId`.
 
 ## Codegen

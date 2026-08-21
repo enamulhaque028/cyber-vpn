@@ -11,6 +11,8 @@ sealed class LocationsState with _$LocationsState {
     @Default(<int, int?>{}) Map<int, int?> rttMs,
     @Default(<int>[]) List<int> favoriteIds,
     @Default(<int>[]) List<int> recentIds,
+    @Default(false) bool syncing,
+    String? syncError,
   }) = LocationsLoaded;
   const factory LocationsState.failure(String message) = LocationsFailure;
 }
