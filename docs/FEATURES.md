@@ -70,7 +70,8 @@ None of these log destination IPs, DNS queries, or payloads. Ping never shows a 
 | Feature | Details |
 |---------|---------|
 | List | Flag, city/country, region · protocol · tier subtitle. Card-style rows with ping + favorite. Tabs: **All** / **Favorites** / **Recent**. Current selection highlighted. |
-| All | **Grouped by country** when not searching (section headers with count; servers sorted by ping within country). **Flat list** while search is active. Search field (All tab only). Sync via app bar icon. |
+| Map | App-bar **List \| Map** toggle. Stylized world map (`flutter_map` + CARTO tiles, dark/light). Clustered pins for servers with catalog `lat`/`lng`. Tap → preview sheet (ping, favorite, Select). Markers colored by ping bands; selected pin pulses. While connecting/protected, dashed **connect arc** from device-locale country centroid → selected server. Servers without coordinates stay list-only. |
+| All | **Grouped by country** when not searching (section headers with count; servers sorted by ping within country). **Flat list** while search is active. Search field (All tab only, list mode). Sync via app bar icon. |
 | Favorites | Starred IDs only (SharedPreferences). Empty state with icon. No search. |
 | Recent | Last 5 free selections (when you pick a city). Empty state with icon. No search. |
 | Premium tap | Opens paywall route (no purchase). |
@@ -257,6 +258,7 @@ Keep enriching the product without becoming a Nord clone. Shipped Tier A items a
 | **Android exclude-list split** | **Shipped** — Settings bypass + `bypassPackages`. See [Split tunnel](#split-tunnel--per-app-vpn). |
 | Home widget | Later. |
 | **Speed test** | **Shipped** — Home → Speed test; ping + download + upload HTTPS CDN meter; tappable connection pill. |
+| **Locations map** | **Shipped** — List \| Map toggle; clustered pins from catalog `lat`/`lng`; connect arc while protecting. |
 | Auto best-ping | Later. |
 | In-app review once | After N protects; do not reset on splash. |
 | Protected / dropped notifications | Later. |

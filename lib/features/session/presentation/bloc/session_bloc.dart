@@ -6,6 +6,7 @@ import 'package:cyber_vpn/core/network/connectivity_bloc.dart';
 import 'package:cyber_vpn/core/utils/traffic_format.dart';
 import 'package:cyber_vpn/features/locations/domain/entities/vpn_location.dart';
 import 'package:cyber_vpn/features/locations/domain/repositories/locations_repository.dart';
+import 'package:cyber_vpn/features/session/data/direct_location_store.dart';
 import 'package:cyber_vpn/features/session/domain/entities/session_record.dart';
 import 'package:cyber_vpn/features/session/domain/network_kind.dart';
 import 'package:cyber_vpn/features/session/domain/repositories/session_history_repository.dart';
@@ -25,6 +26,7 @@ class SessionBloc extends Bloc<SessionEvent, SessionState> {
     this._prefs,
     this._history,
     this._connectivityBloc,
+    this._directLocation,
   ) : super(
          SessionState(
            killSwitchEnabled: _prefs.getBool(AppConfig.prefsKillSwitch) ?? true,
@@ -53,6 +55,7 @@ class SessionBloc extends Bloc<SessionEvent, SessionState> {
   final SharedPreferences _prefs;
   final SessionHistoryRepository _history;
   final ConnectivityBloc _connectivityBloc;
+  final DirectLocationStore _directLocation;
   bool _initialized = false;
   bool _intended = false;
   /// True while recycling the tunnel for kill-switch / bypass option changes.
@@ -136,6 +139,15 @@ class SessionBloc extends Bloc<SessionEvent, SessionState> {
     }
 
     emit(state.copyWith(selected: selected, credentials: creds, message: null));
+
+    // First-open Direct location for map arc (lat/lng only). Skip if already cached.
+    unawaited(
+      _directLocation.ensureCaptured(
+        isDirect:
+            state.phase != SessionPhase.protected &&
+            state.phase != SessionPhase.connecting,
+      ),
+    );
   }
 
   Future<void> _onConnect(
@@ -149,6 +161,18 @@ class SessionBloc extends Bloc<SessionEvent, SessionState> {
       _intended = false;
       emit(state.copyWith(phase: SessionPhase.failed, message: e.toString()));
       return;
+    }
+
+    // Already protecting — drop the tunnel first, then connect again.
+    final wasOn =
+        state.phase == SessionPhase.protected ||
+        state.phase == SessionPhase.connecting;
+    if (wasOn) {
+      _connectTimer?.cancel();
+      _reconnectTimer?.cancel();
+      _recyclingTunnel = true;
+      await _tunnel.disconnect();
+      emit(state.copyWith(phase: SessionPhase.idle, reconnecting: false));
     }
 
     final kind = await _connectivityBloc.fetchCurrentKind();
@@ -356,6 +380,8 @@ class SessionBloc extends Bloc<SessionEvent, SessionState> {
         upRate: '—',
       ),
     );
+    // If first capture was skipped (e.g. opened while Protected), try once on Direct.
+    unawaited(_directLocation.ensureCaptured(isDirect: true));
   }
 
   Future<void> _onServerChosen(
@@ -370,9 +396,7 @@ class SessionBloc extends Bloc<SessionEvent, SessionState> {
       await _tunnel.disconnect();
     }
     emit(state.copyWith(selected: event.location, phase: SessionPhase.idle));
-    if (wasOn) {
-      add(const SessionEvent.connectPressed());
-    }
+    add(const SessionEvent.connectPressed());
   }
 
   Future<void> _onKillSwitchChanged(

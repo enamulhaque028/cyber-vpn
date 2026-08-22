@@ -23,7 +23,7 @@ Own WireGuard / first-party fleet hosting is still out of scope.
 
 ### 1. Catalog schema (`fleet/catalog.json`)
 
-Single file, one HTTP GET for credentials + servers. Keys match existing Freezed models (`VpnCredentials` / `VpnLocation`) — camelCase, no model changes.
+Single file, one HTTP GET for credentials + servers. Keys match existing Freezed models (`VpnCredentials` / `VpnLocation`) — camelCase. Optional `lat`/`lng` for the Locations map.
 
 ```json
 {
@@ -46,7 +46,9 @@ Single file, one HTTP GET for credentials + servers. Keys match existing Freezed
       "config": "<full .ovpn text>",
       "isPremium": false,
       "source": "vpnbook",
-      "protocol": "tcp"
+      "protocol": "tcp",
+      "lat": 38.958,
+      "lng": -77.357
     }
   ]
 }
@@ -54,20 +56,23 @@ Single file, one HTTP GET for credentials + servers. Keys match existing Freezed
 
 - **Stable `id`s:** SHA-256 of `source:key` → 31-bit int (not array index), so favorites/recents survive refreshes.
 - **`source`:** `vpnbook` | `vpngate` (publisher). **`protocol`:** `tcp` | `udp` (transport) — separate fields on purpose.
-- **VPN Gate:** all valid relays from the public CSV (TCP **and** UDP when both exist for an IP); soft max 300. Labels enriched at build time with **DB-IP City Lite** (approximate relay-IP location): `region` = state/prefecture when GeoIP country matches Gate; `city` = `{city} · TCP|UDP`. On mismatch or missing GeoIP → `region` = `JP · operator`, `city` = `TCP · public-vpn-N`. Attribution: [IP Geolocation by DB-IP](https://db-ip.com) (CC BY 4.0).
-- **`fleet/catalog.meta.json`:** `{ updatedAt, updatedAtBd, serverCount, sha256 }` for debugging only (app does not read it). `updatedAtBd` is Asia/Dhaka, e.g. `2026-08-21 02:38:12 PM BST`.
+- **`lat` / `lng` (optional):** Approximate relay coordinates from **DB-IP City Lite** at build (or `tool/fleet/enrich_catalog_coords.py`). Omitted when GeoIP fails. Used by the Locations map; not precise enough for street-level claims. Attribution: [IP Geolocation by DB-IP](https://db-ip.com) (CC BY 4.0).
+- **VPN Gate:** all valid relays from the public CSV (TCP **and** UDP when both exist for an IP); soft max 300. Labels enriched at build time with **DB-IP City Lite** (approximate relay-IP location): `region` = state/prefecture when GeoIP country matches Gate; `city` = `{city} · TCP|UDP`. On mismatch or missing GeoIP → `region` = `JP · operator`, `city` = `TCP · public-vpn-N`.
+- **`fleet/catalog.meta.json`:** `{ updatedAt, updatedAtBd, serverCount, sha256, geoAttribution }` for debugging only (app does not read it). `updatedAtBd` is Asia/Dhaka, e.g. `2026-08-21 02:38:12 PM BST`.
 - Catalog is written **pretty-printed** (`indent=2`) for readability in git diffs.
 
 ### 2. Ingest script — `tool/fleet/build_catalog.py`
 
 | Source | Behavior |
 |--------|----------|
-| **vpnbook** | Scrapes `https://www.vpnbook.com/freevpn/openvpn` for hosts + shared user/pass (or env secrets). For **each** of the 10 OpenVPN hosts, downloads all four published protocols via `GET /api/openvpn?hostname=…&protocol=` (`tcp80`, `tcp443`, `udp53`, `udp25000`) → **40** rows. **`city`** from curated host map (former Supabase export); **`region`** from DB-IP on resolved hostname IP (static fallback if DNS/GeoIP fails). Titles like `US16-TCP443`. |
-| **VPN Gate** | `GET http://www.vpngate.net/api/iphone/` (HTTPS fallback). Decode Base64 configs; keep **TCP and UDP** when both exist (best Score per IP+protocol); **no top-40 cap** (soft max 300). Resolve city/region via offline **DB-IP City Lite** MMDB (auto-downloaded to `tool/fleet/.cache/`; country-match guard). |
+| **vpnbook** | Scrapes `https://www.vpnbook.com/freevpn/openvpn` for hosts + shared user/pass (or env secrets). For **each** of the 10 OpenVPN hosts, downloads all four published protocols via `GET /api/openvpn?hostname=…&protocol=` (`tcp80`, `tcp443`, `udp53`, `udp25000`) → **40** rows. **`city`** from curated host map (former Supabase export); **`region`** + optional **`lat`/`lng`** from DB-IP on resolved hostname IP (static region fallback if DNS/GeoIP fails). Titles like `US16-TCP443`. |
+| **VPN Gate** | `GET http://www.vpngate.net/api/iphone/` (HTTPS fallback). Decode Base64 configs; keep **TCP and UDP** when both exist (best Score per IP+protocol); **no top-40 cap** (soft max 300). Resolve city/region/`lat`/`lng` via offline **DB-IP City Lite** MMDB (auto-downloaded to `tool/fleet/.cache/`; country-match guard for labels). |
 
 Merge order: **vpnbook first**, then VPN Gate. Job **fails if zero servers** (won’t publish an empty wipe).
 
-Dependencies: `tool/fleet/requirements.txt` (`requests`).
+**Coords-only enrich (no full rebuild):** `tool/fleet/enrich_catalog_coords.py` — reads existing `fleet/catalog.json`, GeoIP from each config’s `remote` host, writes `lat`/`lng`.
+
+Dependencies: `tool/fleet/requirements.txt` (`requests`, `geoip2`).
 
 Local verify helper: `dart run tool/fleet/verify_catalog_parse.dart` (parses with Freezed models).
 

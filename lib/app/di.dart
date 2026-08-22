@@ -7,6 +7,7 @@ import 'package:cyber_vpn/features/locations/data/tcp_server_probe.dart';
 import 'package:cyber_vpn/features/locations/domain/repositories/locations_repository.dart';
 import 'package:cyber_vpn/features/locations/domain/repositories/server_probe.dart';
 import 'package:cyber_vpn/features/locations/presentation/bloc/locations_bloc.dart';
+import 'package:cyber_vpn/features/session/data/direct_location_store.dart';
 import 'package:cyber_vpn/features/session/data/axe_vpn_tunnel_repository.dart';
 import 'package:cyber_vpn/features/session/data/device_installed_apps_repository.dart';
 import 'package:cyber_vpn/features/session/data/exit_ip_api.dart';
@@ -57,6 +58,9 @@ Future<void> configureDependencies() async {
     ..registerLazySingleton<ExitIpRepository>(
       () => IpWhoIsExitIpRepository(getIt()),
     )
+    ..registerLazySingleton(
+      () => DirectLocationStore(getIt(), getIt()),
+    )
     ..registerLazySingleton<SessionHistoryRepository>(
       () => PrefsSessionHistoryRepository(getIt()),
     )
@@ -79,6 +83,7 @@ Future<void> configureDependencies() async {
         getIt<SharedPreferences>(),
         getIt<SessionHistoryRepository>(),
         getIt<ConnectivityBloc>(),
+        getIt<DirectLocationStore>(),
       ),
     );
 }

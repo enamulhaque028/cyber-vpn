@@ -13,7 +13,8 @@
 #      - vpnbook: all 10 hosts × 4 protocols (tcp80/443, udp53/25000)
 #      - VPN Gate: all valid relays, TCP + UDP when both exist (soft max 300)
 #      - Each server has source (vpnbook|vpngate) and protocol (tcp|udp)
-#      - VPN Gate city/region: DB-IP City Lite GeoIP (cached in tool/fleet/.cache/)
+#      - VPN Gate city/region/lat/lng: DB-IP City Lite GeoIP (cached in tool/fleet/.cache/)
+#      - Optional: .venv-fleet/bin/python tool/fleet/enrich_catalog_coords.py (coords only)
 #   3. Runs dart run tool/fleet/verify_catalog_parse.dart (if dart is on PATH)
 #
 # Optional env (same as CI):

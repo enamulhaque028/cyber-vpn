@@ -20,7 +20,12 @@ abstract class VpnLocation with _$VpnLocation {
     @Default('') String source,
     /// Transport: `tcp` | `udp` (empty if unknown).
     @Default('') String protocol,
+    /// Approximate relay coordinates from catalog GeoIP (omit when unknown).
+    double? lat,
+    double? lng,
   }) = _VpnLocation;
+
+  bool get hasCoordinates => lat != null && lng != null;
 
   factory VpnLocation.fromJson(Map<String, dynamic> json) =>
       _$VpnLocationFromJson(json);

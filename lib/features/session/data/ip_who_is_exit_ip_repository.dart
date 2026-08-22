@@ -19,6 +19,8 @@ class IpWhoIsExitIpRepository implements ExitIpRepository {
       city: parsed.city,
       country: parsed.country,
       isp: isp.isEmpty ? 'Unknown ISP' : isp,
+      latitude: parsed.latitude,
+      longitude: parsed.longitude,
     );
   }
 }

@@ -10,6 +10,9 @@ abstract class ExitInfo with _$ExitInfo {
     required String city,
     required String country,
     required String isp,
+    /// Approximate public-IP coordinates from ipwho.is (when available).
+    double? latitude,
+    double? longitude,
   }) = _ExitInfo;
 
   factory ExitInfo.fromJson(Map<String, dynamic> json) =>

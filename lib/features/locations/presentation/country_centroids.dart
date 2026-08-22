@@ -1,0 +1,62 @@
+import 'package:latlong2/latlong.dart';
+
+/// Approximate country centroids for the connect-path “you” endpoint.
+/// Keys are ISO 3166-1 alpha-2 (uppercase). Not precise; decorative only.
+const Map<String, LatLng> kCountryCentroids = {
+  'US': LatLng(39.83, -98.58),
+  'CA': LatLng(56.13, -106.35),
+  'GB': LatLng(55.38, -3.44),
+  'DE': LatLng(51.17, 10.45),
+  'FR': LatLng(46.23, 2.21),
+  'IT': LatLng(41.87, 12.57),
+  'ES': LatLng(40.46, -3.75),
+  'NL': LatLng(52.13, 5.29),
+  'BE': LatLng(50.50, 4.47),
+  'PL': LatLng(51.92, 19.15),
+  'SE': LatLng(60.13, 18.64),
+  'NO': LatLng(60.47, 8.47),
+  'FI': LatLng(61.92, 25.75),
+  'DK': LatLng(56.26, 9.50),
+  'CH': LatLng(46.82, 8.23),
+  'AT': LatLng(47.52, 14.55),
+  'PT': LatLng(39.40, -8.22),
+  'IE': LatLng(53.14, -7.69),
+  'CZ': LatLng(49.82, 15.47),
+  'RO': LatLng(45.94, 24.97),
+  'HU': LatLng(47.16, 19.50),
+  'GR': LatLng(39.07, 21.82),
+  'TR': LatLng(38.96, 35.24),
+  'RU': LatLng(61.52, 105.32),
+  'UA': LatLng(48.38, 31.17),
+  'JP': LatLng(36.20, 138.25),
+  'KR': LatLng(35.91, 127.77),
+  'CN': LatLng(35.86, 104.20),
+  'TW': LatLng(23.70, 120.96),
+  'HK': LatLng(22.40, 114.11),
+  'SG': LatLng(1.35, 103.82),
+  'MY': LatLng(4.21, 101.98),
+  'TH': LatLng(15.87, 100.99),
+  'VN': LatLng(14.06, 108.28),
+  'ID': LatLng(-0.79, 113.92),
+  'PH': LatLng(12.88, 121.77),
+  'IN': LatLng(20.59, 78.96),
+  'BD': LatLng(23.68, 90.36),
+  'PK': LatLng(30.38, 69.35),
+  'AU': LatLng(-25.27, 133.78),
+  'NZ': LatLng(-40.90, 174.89),
+  'BR': LatLng(-14.24, -51.93),
+  'AR': LatLng(-38.42, -63.62),
+  'MX': LatLng(23.63, -102.55),
+  'CL': LatLng(-35.68, -71.54),
+  'CO': LatLng(4.57, -74.30),
+  'ZA': LatLng(-30.56, 22.94),
+  'EG': LatLng(26.82, 30.80),
+  'AE': LatLng(23.42, 53.85),
+  'SA': LatLng(23.89, 45.08),
+  'IL': LatLng(31.05, 34.85),
+};
+
+LatLng? countryCentroid(String? isoCode) {
+  if (isoCode == null || isoCode.isEmpty) return null;
+  return kCountryCentroids[isoCode.toUpperCase()];
+}

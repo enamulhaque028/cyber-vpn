@@ -28,6 +28,9 @@ class AppConfig {
   static const prefsFavoriteServerIds = 'favorite_server_ids';
   static const prefsRecentServerIds = 'recent_server_ids';
   static const prefsSessionHistory = 'session_history';
+  /// Approximate Direct location for map arc (lat/lng only; no IP). Cleared with app data.
+  static const prefsDirectLocationLat = 'direct_location_lat';
+  static const prefsDirectLocationLng = 'direct_location_lng';
 
   /// HTTPS exit lookup base (never use plain HTTP ip-api).
   static const exitIpBaseUrl = 'https://ipwho.is/';

@@ -14,6 +14,7 @@ lib/
     router.gr.dart          # generated
   core/
     config/app_config.dart
+    network/                # ConnectivityBloc (app-wide path)
     theme/
     widgets/                # ClButton, ConnectRing, ThreatBanner, StatsTicker, PingBar
   features/
@@ -35,14 +36,15 @@ lib/
       presentation/history_aggregates.dart
       presentation/pages/  # home, connection_info, history
     locations/
-      domain/entities/vpn_location.dart
+      domain/entities/vpn_location.dart  # optional lat/lng for map
       domain/open_vpn_remote.dart
       domain/repositories/locations_repository.dart
       domain/repositories/server_probe.dart
       data/http_locations_repository.dart
       data/tcp_server_probe.dart
-      presentation/
+      presentation/          # list + map (flutter_map)
     settings/               # ThemeCubit; bypass_apps + paywall pages
+    speed_test/             # HTTPS CDN ping/download/upload meter
 ```
 
 Fleet publish lives outside `lib/`: `fleet/catalog.json` (built by `tool/fleet/build_catalog.py` + `.github/workflows/fleet-catalog.yml`).
@@ -77,7 +79,7 @@ Do not hand-edit generated files. They are **gitignored** (`*.freezed.dart`, `*.
 
 ## Stack (current)
 
-`flutter_bloc`, `freezed`, `get_it`, `auto_route`, `axevpn_flutter` ^2, `shared_preferences`, `connectivity_plus`, `google_fonts`, `cached_network_image`, `url_launcher`, `fl_chart`, `dio`, `retrofit`.
+`flutter_bloc`, `freezed`, `get_it`, `auto_route`, `axevpn_flutter` ^2, `shared_preferences`, `connectivity_plus`, `google_fonts`, `cached_network_image`, `url_launcher`, `fl_chart`, `dio`, `retrofit`, `flutter_map`, `latlong2`, `flutter_map_marker_cluster`.
 
 Swift Package Manager is **disabled** in `pubspec.yaml` because `axevpn_flutter` does not support it.
 

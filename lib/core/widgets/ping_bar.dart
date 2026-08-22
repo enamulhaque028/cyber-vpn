@@ -167,6 +167,14 @@ Color _latencyColor(ColorScheme scheme, int? milliseconds, bool loading) {
   };
 }
 
+/// Public ping color for map markers (same bands as [PingBar]).
+Color latencyColorForPing(
+  ColorScheme scheme,
+  int? milliseconds, {
+  bool loading = false,
+}) =>
+    _latencyColor(scheme, milliseconds, loading);
+
 Color _latencyOrange(ColorScheme scheme) {
   return scheme.brightness == Brightness.dark
       ? const Color(0xFFFF7043)

@@ -8,14 +8,24 @@ import 'package:cyber_vpn/features/locations/presentation/locations_list_utils.d
 import 'package:cyber_vpn/features/locations/presentation/locations_sync.dart';
 import 'package:cyber_vpn/features/locations/presentation/widgets/location_row.dart';
 import 'package:cyber_vpn/features/locations/presentation/widgets/locations_empty_state.dart';
+import 'package:cyber_vpn/features/locations/presentation/widgets/locations_map_view.dart';
 import 'package:cyber_vpn/features/locations/presentation/widgets/locations_search_field.dart';
 import 'package:cyber_vpn/features/session/presentation/bloc/session_bloc.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+enum _LocationsViewMode { list, map }
+
 @RoutePage()
-class LocationsPage extends StatelessWidget {
+class LocationsPage extends StatefulWidget {
   const LocationsPage({super.key});
+
+  @override
+  State<LocationsPage> createState() => _LocationsPageState();
+}
+
+class _LocationsPageState extends State<LocationsPage> {
+  _LocationsViewMode _viewMode = _LocationsViewMode.list;
 
   void _select(BuildContext context, VpnLocation loc) {
     if (loc.isPremium) {
@@ -39,6 +49,7 @@ class LocationsPage extends StatelessWidget {
             'Locations',
             style: TextStyle(fontWeight: FontWeight.w700, letterSpacing: -0.3),
           ),
+          centerTitle: true,
           actions: [
             BlocBuilder<LocationsBloc, LocationsState>(
               buildWhen: (p, n) =>
@@ -85,7 +96,16 @@ class LocationsPage extends StatelessWidget {
             ),
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
-              child: _LocationsTabBar(scheme: scheme),
+              child: Row(
+                children: [
+                  Expanded(child: _LocationsTabBar(scheme: scheme)),
+                  const SizedBox(width: 8),
+                  _ViewModeDropdown(
+                    mode: _viewMode,
+                    onChanged: (mode) => setState(() => _viewMode = mode),
+                  ),
+                ],
+              ),
             ),
             Expanded(
               child: BlocBuilder<LocationsBloc, LocationsState>(
@@ -110,7 +130,11 @@ class LocationsPage extends StatelessWidget {
                         buildWhen: (p, n) => p.selected?.id != n.selected?.id,
                         builder: (context, session) {
                           final selectedId = session.selected?.id;
+                          final showMap = _viewMode == _LocationsViewMode.map;
                           return TabBarView(
+                            physics: showMap
+                                ? const NeverScrollableScrollPhysics()
+                                : null,
                             children: [
                               _AllTab(
                                 visible: visible,
@@ -118,6 +142,7 @@ class LocationsPage extends StatelessWidget {
                                 rttMs: rttMs,
                                 favoriteIds: favoriteIds,
                                 selectedId: selectedId,
+                                showMap: showMap,
                                 onSelect: (loc) => _select(context, loc),
                                 onToggleFavorite: (id) => context
                                     .read<LocationsBloc>()
@@ -138,6 +163,7 @@ class LocationsPage extends StatelessWidget {
                                 rttMs: rttMs,
                                 favoriteIds: favoriteIds,
                                 selectedId: selectedId,
+                                showMap: showMap,
                                 onSelect: (loc) => _select(context, loc),
                                 onToggleFavorite: (id) => context
                                     .read<LocationsBloc>()
@@ -155,6 +181,7 @@ class LocationsPage extends StatelessWidget {
                                 rttMs: rttMs,
                                 favoriteIds: favoriteIds,
                                 selectedId: selectedId,
+                                showMap: showMap,
                                 onSelect: (loc) => _select(context, loc),
                                 onToggleFavorite: (id) => context
                                     .read<LocationsBloc>()
@@ -169,6 +196,86 @@ class LocationsPage extends StatelessWidget {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ViewModeDropdown extends StatelessWidget {
+  const _ViewModeDropdown({required this.mode, required this.onChanged});
+
+  final _LocationsViewMode mode;
+  final ValueChanged<_LocationsViewMode> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final isMap = mode == _LocationsViewMode.map;
+
+    return PopupMenuButton<_LocationsViewMode>(
+      tooltip: isMap ? 'Map view' : 'List view',
+      initialValue: mode,
+      offset: const Offset(0, 40),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AppRadii.sm),
+      ),
+      onSelected: onChanged,
+      itemBuilder: (context) => [
+        PopupMenuItem(
+          value: _LocationsViewMode.list,
+          child: Row(
+            children: [
+              Icon(
+                Icons.view_list_rounded,
+                size: 20,
+                color: !isMap ? scheme.primary : scheme.onSurface,
+              ),
+              const SizedBox(width: 12),
+              Text(
+                'List',
+                style: TextStyle(
+                  fontWeight: !isMap ? FontWeight.w700 : FontWeight.w500,
+                  color: !isMap ? scheme.primary : null,
+                ),
+              ),
+            ],
+          ),
+        ),
+        PopupMenuItem(
+          value: _LocationsViewMode.map,
+          child: Row(
+            children: [
+              Icon(
+                Icons.map_rounded,
+                size: 20,
+                color: isMap ? scheme.primary : scheme.onSurface,
+              ),
+              const SizedBox(width: 12),
+              Text(
+                'Map',
+                style: TextStyle(
+                  fontWeight: isMap ? FontWeight.w700 : FontWeight.w500,
+                  color: isMap ? scheme.primary : null,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+      child: Container(
+        height: 44,
+        width: 44,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: scheme.surfaceContainerHighest,
+          borderRadius: BorderRadius.circular(AppRadii.sm),
+          border: Border.all(color: scheme.outline.withValues(alpha: 0.35)),
+        ),
+        child: Icon(
+          isMap ? Icons.map_rounded : Icons.view_list_rounded,
+          size: 22,
+          color: scheme.primary,
         ),
       ),
     );
@@ -192,7 +299,10 @@ class _LocationsTabBar extends StatelessWidget {
       ),
       child: TabBar(
         dividerHeight: 0,
+        isScrollable: false,
+        tabAlignment: TabAlignment.fill,
         indicatorSize: TabBarIndicatorSize.tab,
+        labelPadding: EdgeInsets.zero,
         indicator: BoxDecoration(
           color: scheme.surface,
           borderRadius: BorderRadius.circular(AppRadii.sm - 4),
@@ -238,6 +348,7 @@ class _AllTab extends StatelessWidget {
     required this.rttMs,
     required this.favoriteIds,
     required this.selectedId,
+    required this.showMap,
     required this.onSelect,
     required this.onToggleFavorite,
     required this.onQueryChanged,
@@ -248,6 +359,7 @@ class _AllTab extends StatelessWidget {
   final Map<int, int?> rttMs;
   final List<int> favoriteIds;
   final int? selectedId;
+  final bool showMap;
   final void Function(VpnLocation) onSelect;
   final void Function(int) onToggleFavorite;
   final void Function(String) onQueryChanged;
@@ -255,6 +367,17 @@ class _AllTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final searching = query.trim().isNotEmpty;
+
+    if (showMap) {
+      return LocationsMapView(
+        locations: visible,
+        rttMs: rttMs,
+        favoriteIds: favoriteIds,
+        selectedId: selectedId,
+        onSelect: onSelect,
+        onToggleFavorite: onToggleFavorite,
+      );
+    }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -315,6 +438,7 @@ class _FilteredListTab extends StatelessWidget {
     required this.rttMs,
     required this.favoriteIds,
     required this.selectedId,
+    required this.showMap,
     required this.onSelect,
     required this.onToggleFavorite,
   });
@@ -326,6 +450,7 @@ class _FilteredListTab extends StatelessWidget {
   final Map<int, int?> rttMs;
   final List<int> favoriteIds;
   final int? selectedId;
+  final bool showMap;
   final void Function(VpnLocation) onSelect;
   final void Function(int) onToggleFavorite;
 
@@ -344,6 +469,17 @@ class _FilteredListTab extends StatelessWidget {
             ),
           ),
         ],
+      );
+    }
+
+    if (showMap) {
+      return LocationsMapView(
+        locations: locations,
+        rttMs: rttMs,
+        favoriteIds: favoriteIds,
+        selectedId: selectedId,
+        onSelect: onSelect,
+        onToggleFavorite: onToggleFavorite,
       );
     }
 

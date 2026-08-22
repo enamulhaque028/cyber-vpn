@@ -10,6 +10,8 @@ abstract class IpWhoIsResponse with _$IpWhoIsResponse {
     @Default('') String ip,
     @Default('') String city,
     @Default('') String country,
+    double? latitude,
+    double? longitude,
     IpWhoIsConnection? connection,
   }) = _IpWhoIsResponse;
 

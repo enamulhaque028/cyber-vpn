@@ -30,7 +30,7 @@ Shipped behavior with details: **[FEATURES.md](FEATURES.md)**.
 
 - Splash → privacy declaration → Home.
 - Home: Protect ring, threat banner, stats ticker, location row, Check connection, Go Premium.
-- Locations: All / Favorites / Recent tabs, search on All, flags, premium → paywall route, ping bars.
+- Locations: All / Favorites / Recent tabs, search on All, flags, premium → paywall route, ping bars, **List | Map** (clustered pins from catalog `lat`/`lng`).
 - Connection: HTTPS exit IP / city / country / ISP (`ipwho.is`; Freezed response DTO).
 - History: on-device sessions with summary, 7-day chart, relative bars (Settings).
 - Settings: theme, kill switch, **Android bypass apps**, Android Always-on / iOS stay-protected, history + connection links.
