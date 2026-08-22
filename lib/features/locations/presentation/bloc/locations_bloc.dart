@@ -195,6 +195,10 @@ class LocationsBloc extends Bloc<LocationsEvent, LocationsState> {
         final index = next++;
         if (index >= all.length) return;
         final loc = all[index];
+        if (loc.protocol.toLowerCase() == 'udp') {
+          add(LocationsEvent.rttMeasured(loc.id, null));
+          continue;
+        }
         final ms = await _probe.measureMs(loc.config);
         if (epoch != _probeEpoch || isClosed) return;
         add(LocationsEvent.rttMeasured(loc.id, ms));
