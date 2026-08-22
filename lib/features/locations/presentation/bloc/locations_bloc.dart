@@ -93,8 +93,11 @@ class LocationsBloc extends Bloc<LocationsEvent, LocationsState> {
                 .where(
                   (l) =>
                       l.country.toLowerCase().contains(q.toLowerCase()) ||
+                      l.region.toLowerCase().contains(q.toLowerCase()) ||
                       l.city.toLowerCase().contains(q.toLowerCase()) ||
-                      l.title.toLowerCase().contains(q.toLowerCase()),
+                      l.title.toLowerCase().contains(q.toLowerCase()) ||
+                      l.protocol.toLowerCase().contains(q.toLowerCase()) ||
+                      l.source.toLowerCase().contains(q.toLowerCase()),
                 )
                 .toList();
       emit(
@@ -132,8 +135,11 @@ class LocationsBloc extends Bloc<LocationsEvent, LocationsState> {
               .where(
                 (l) =>
                     l.country.toLowerCase().contains(q) ||
+                    l.region.toLowerCase().contains(q) ||
                     l.city.toLowerCase().contains(q) ||
-                    l.title.toLowerCase().contains(q),
+                    l.title.toLowerCase().contains(q) ||
+                    l.protocol.toLowerCase().contains(q) ||
+                    l.source.toLowerCase().contains(q),
               )
               .toList();
     emit(current.copyWith(visible: visible, query: event.query));

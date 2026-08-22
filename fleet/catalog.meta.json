@@ -1,6 +1,7 @@
 {
-  "updatedAt": "2026-08-22T04:55:27Z",
-  "updatedAtBd": "2026-08-22 10:55:27 AM BST",
+  "updatedAt": "2026-08-22T05:22:29Z",
+  "updatedAtBd": "2026-08-22 11:22:29 AM BST",
   "serverCount": 139,
-  "sha256": "6f382f866b685872e4438f1f257957a4c9b1c8fc19a86d8b15c254aa26338cf9"
+  "sha256": "abdf32d9d484e679e71ca06ad810f77e029f972ddbb94e54a2da0c552a288228",
+  "geoAttribution": "IP Geolocation by DB-IP (https://db-ip.com)"
 }
