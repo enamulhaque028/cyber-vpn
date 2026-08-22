@@ -1,6 +1,7 @@
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:cyber_vpn/app/router.dart';
 import 'package:cyber_vpn/core/config/app_config.dart';
+import 'package:cyber_vpn/core/network/connectivity_bloc.dart';
 import 'package:cyber_vpn/features/locations/data/http_locations_repository.dart';
 import 'package:cyber_vpn/features/locations/data/tcp_server_probe.dart';
 import 'package:cyber_vpn/features/locations/domain/repositories/locations_repository.dart';
@@ -63,10 +64,13 @@ Future<void> configureDependencies() async {
     ..registerLazySingleton<SpeedTestRepository>(
       HttpsDownloadSpeedTestRepository.new,
     )
+    ..registerLazySingleton(
+      () => ConnectivityBloc(connectivity: Connectivity()),
+    )
     ..registerFactory(() => ThemeCubit(getIt()))
     ..registerFactory(() => LocationsBloc(getIt(), getIt(), getIt()))
     ..registerFactory(() => ExitCheckCubit(getIt()))
-    ..registerFactory(() => SpeedTestCubit(getIt(), connectivity: Connectivity()))
+    ..registerFactory(() => SpeedTestCubit(getIt(), getIt()))
     ..registerFactory(() => HistoryCubit(getIt()))
     ..registerFactory(
       () => SessionBloc(
@@ -74,6 +78,7 @@ Future<void> configureDependencies() async {
         getIt<LocationsRepository>(),
         getIt<SharedPreferences>(),
         getIt<SessionHistoryRepository>(),
+        getIt<ConnectivityBloc>(),
       ),
     );
 }

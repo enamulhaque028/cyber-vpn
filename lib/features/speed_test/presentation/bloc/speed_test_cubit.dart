@@ -1,7 +1,8 @@
-import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:cyber_vpn/core/network/connectivity_bloc.dart';
 import 'package:cyber_vpn/features/speed_test/data/https_download_speed_test_repository.dart';
 import 'package:cyber_vpn/features/speed_test/domain/entities/speed_test_result.dart';
 import 'package:cyber_vpn/features/speed_test/domain/repositories/speed_test_repository.dart';
+import 'package:cyber_vpn/features/session/domain/network_kind.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
@@ -28,14 +29,11 @@ sealed class SpeedTestState with _$SpeedTestState {
 }
 
 class SpeedTestCubit extends Cubit<SpeedTestState> {
-  SpeedTestCubit(
-    this._repository, {
-    Connectivity? connectivity,
-  })  : _connectivity = connectivity ?? Connectivity(),
-        super(const SpeedTestState.idle());
+  SpeedTestCubit(this._repository, this._connectivityBloc)
+    : super(const SpeedTestState.idle());
 
   final SpeedTestRepository _repository;
-  final Connectivity _connectivity;
+  final ConnectivityBloc _connectivityBloc;
   CancelToken? _cancelToken;
   DateTime? _startedAt;
   bool _cancelled = false;
@@ -106,9 +104,8 @@ class SpeedTestCubit extends Cubit<SpeedTestState> {
   }
 
   Future<bool> _hasNetworkConnection() async {
-    final results = await _connectivity.checkConnectivity();
-    if (results.isEmpty) return false;
-    return !(results.length == 1 && results.first == ConnectivityResult.none);
+    final kind = await _connectivityBloc.fetchCurrentKind();
+    return kind != NetworkKind.none;
   }
 
   Future<void> cancel({bool restoreIdle = true}) async {

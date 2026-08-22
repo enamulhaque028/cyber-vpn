@@ -147,7 +147,7 @@ class _SpeedTestView extends StatelessWidget {
                     textAlign: TextAlign.center,
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                           color: state is SpeedTestError
-                              ? scheme.secondary
+                              ? scheme.error
                               : scheme.onSurface.withValues(alpha: 0.85),
                           height: 1.4,
                         ),
