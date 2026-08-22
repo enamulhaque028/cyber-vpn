@@ -205,10 +205,7 @@ class _LocationsTabBar extends StatelessWidget {
             ),
           ],
         ),
-        labelStyle: const TextStyle(
-          fontWeight: FontWeight.w600,
-          fontSize: 13,
-        ),
+        labelStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
         unselectedLabelStyle: const TextStyle(
           fontWeight: FontWeight.w500,
           fontSize: 13,
@@ -287,22 +284,22 @@ class _AllTab extends StatelessWidget {
                   ],
                 )
               : searching
-                  ? _FlatLocationList(
-                      locations: sortByPing(visible, rttMs),
-                      rttMs: rttMs,
-                      favoriteIds: favoriteIds,
-                      selectedId: selectedId,
-                      onSelect: onSelect,
-                      onToggleFavorite: onToggleFavorite,
-                    )
-                  : _GroupedLocationList(
-                      grouped: groupByCountry(visible, rttMs),
-                      rttMs: rttMs,
-                      favoriteIds: favoriteIds,
-                      selectedId: selectedId,
-                      onSelect: onSelect,
-                      onToggleFavorite: onToggleFavorite,
-                    ),
+              ? _FlatLocationList(
+                  locations: sortByPing(visible, rttMs),
+                  rttMs: rttMs,
+                  favoriteIds: favoriteIds,
+                  selectedId: selectedId,
+                  onSelect: onSelect,
+                  onToggleFavorite: onToggleFavorite,
+                )
+              : _GroupedLocationList(
+                  grouped: groupByCountry(visible, rttMs),
+                  rttMs: rttMs,
+                  favoriteIds: favoriteIds,
+                  selectedId: selectedId,
+                  onSelect: onSelect,
+                  onToggleFavorite: onToggleFavorite,
+                ),
         ),
       ],
     );
@@ -369,7 +366,6 @@ class _FlatLocationList extends StatelessWidget {
     required this.selectedId,
     required this.onSelect,
     required this.onToggleFavorite,
-    this.padding = const EdgeInsets.fromLTRB(16, 4, 16, 24),
   });
 
   final List<VpnLocation> locations;
@@ -378,12 +374,11 @@ class _FlatLocationList extends StatelessWidget {
   final int? selectedId;
   final void Function(VpnLocation) onSelect;
   final void Function(int) onToggleFavorite;
-  final EdgeInsets padding;
 
   @override
   Widget build(BuildContext context) {
     return ListView.builder(
-      padding: padding,
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
       itemCount: locations.length,
       itemBuilder: (context, index) {
         final loc = locations[index];
@@ -495,9 +490,9 @@ class _CountrySectionHeader extends StatelessWidget {
           Expanded(
             child: Text(
               country,
-              style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.w700,
-                  ),
+              style: Theme.of(
+                context,
+              ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
             ),
           ),
           Container(
@@ -510,9 +505,9 @@ class _CountrySectionHeader extends StatelessWidget {
             child: Text(
               '$count',
               style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    fontWeight: FontWeight.w600,
-                    fontFeatures: const [FontFeature.tabularFigures()],
-                  ),
+                fontWeight: FontWeight.w600,
+                fontFeatures: const [FontFeature.tabularFigures()],
+              ),
             ),
           ),
         ],
