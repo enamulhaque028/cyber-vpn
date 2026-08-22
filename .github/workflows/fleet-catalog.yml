@@ -23,6 +23,18 @@ jobs:
       - name: Install dependencies
         run: pip install -r tool/fleet/requirements.txt
 
+      - name: Cache DB-IP City Lite
+        id: dbip_month
+        run: echo "month=$(date +%Y-%m)" >> "$GITHUB_OUTPUT"
+
+      - name: Restore DB-IP database
+        uses: actions/cache@v4
+        with:
+          path: tool/fleet/.cache/dbip-city-lite.mmdb
+          key: dbip-city-lite-${{ steps.dbip_month.outputs.month }}
+          restore-keys: |
+            dbip-city-lite-
+
       - name: Build catalog
         env:
           VPNBOOK_USERNAME: ${{ secrets.VPNBOOK_USERNAME }}

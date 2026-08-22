@@ -5,6 +5,7 @@
 *.swp
 .DS_Store
 .venv-fleet/
+tool/fleet/.cache/
 .atom/
 .build/
 .buildlog/

@@ -11,7 +11,9 @@
 #   1. Creates .venv-fleet + installs tool/fleet/requirements.txt if missing
 #   2. Runs tool/fleet/build_catalog.py → fleet/catalog.json (+ catalog.meta.json)
 #      - vpnbook: all 10 hosts × 4 protocols (tcp80/443, udp53/25000)
-#      - VPN Gate: curated top 40 when the API is reachable (may time out locally)
+#      - VPN Gate: all valid relays, TCP + UDP when both exist (soft max 300)
+#      - Each server has source (vpnbook|vpngate) and protocol (tcp|udp)
+#      - VPN Gate city/region: DB-IP City Lite GeoIP (cached in tool/fleet/.cache/)
 #   3. Runs dart run tool/fleet/verify_catalog_parse.dart (if dart is on PATH)
 #
 # Optional env (same as CI):

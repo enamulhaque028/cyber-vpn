@@ -5,19 +5,24 @@ from __future__ import annotations
 
 import base64
 import csv
+import gzip
 import hashlib
 import io
 import json
 import os
 import re
+import shutil
+import socket
 import sys
 import time
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from zoneinfo import ZoneInfo
 from pathlib import Path
 from typing import Any
 from urllib.parse import urlencode
 
+import geoip2.database
+import geoip2.errors
 import requests
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -41,7 +46,16 @@ VPNGATE_URLS = (
     "http://www.vpngate.net/api/iphone/",
     "https://www.vpngate.net/api/iphone/",
 )
-VPNGATE_LIMIT = 40
+# No hard cap: keep every valid Gate relay (TCP + UDP when both exist).
+# Soft safety only if the public list ever explodes in size.
+VPNGATE_SOFT_MAX = 300
+
+FLEET_DIR = Path(__file__).resolve().parent
+DBIP_CACHE_DIR = FLEET_DIR / ".cache"
+DBIP_MMD_PATH = DBIP_CACHE_DIR / "dbip-city-lite.mmdb"
+DBIP_URL = "https://download.db-ip.com/free/dbip-city-lite-{month}.mmdb.gz"
+# DB-IP City Lite — CC BY 4.0; attribute in docs/FLEET_CATALOG.md.
+DBIP_ATTRIBUTION = "IP Geolocation by DB-IP (https://db-ip.com)"
 
 COUNTRY_BY_PREFIX = {
     "us": ("USA", "us"),
@@ -66,6 +80,20 @@ CITY_BY_SLUG = {
     "fr2311": "Roubaix",
 }
 
+# State/province fallback when DNS or GeoIP lookup fails (10 vpnbook hosts).
+REGION_BY_SLUG = {
+    "us16": "Virginia",
+    "us178": "Oregon",
+    "ca149": "Quebec",
+    "ca196": "Quebec",
+    "uk205": "England",
+    "uk68": "England",
+    "de20": "Hesse",
+    "de220": "Hesse",
+    "fr200": "Hauts-de-France",
+    "fr2311": "Hauts-de-France",
+}
+
 # Title / city protocol labels (vpnbook UI + historical Supabase rows).
 PROTO_TITLE = {
     "tcp80": "TCP80",
@@ -78,6 +106,14 @@ PROTO_CITY_LABEL = {
     "tcp443": "TCP 443",
     "udp53": "UDP 53",
     "udp25000": "UDP 25000",
+}
+
+# Normalized transport for catalog `protocol` field.
+PROTO_TRANSPORT = {
+    "tcp80": "tcp",
+    "tcp443": "tcp",
+    "udp53": "udp",
+    "udp25000": "udp",
 }
 
 
@@ -175,12 +211,49 @@ def fetch_vpnbook_ovpn(hostname: str, protocol: str) -> str | None:
         return None
 
 
+def vpnbook_region_for_host(
+    hostname: str,
+    country_short: str,
+    reader: geoip2.database.Reader | None,
+) -> str:
+    """Region from DB-IP on resolved hostname IP; static fallback per host slug."""
+    slug = hostname.split(".")[0].lower()
+    fallback = REGION_BY_SLUG.get(slug, "")
+    if reader is None:
+        return fallback
+    expected = (country_short or "").upper()
+    try:
+        ip = socket.gethostbyname(hostname)
+    except OSError:
+        return fallback
+    geo = lookup_ip_geo(reader, ip)
+    if geo and expected and geo.get("country_code") == expected and geo.get("region"):
+        return geo["region"]
+    return fallback
+
+
 def build_vpnbook_servers(html: str) -> list[dict[str, Any]]:
     """One catalog row per host × protocol (10 hosts × 4 protocols = 40)."""
+    hosts = parse_vpnbook_hosts(html)
+    region_by_host: dict[str, str] = {}
+    db_path = ensure_dbip_database()
+    if db_path is not None:
+        with geoip2.database.Reader(str(db_path)) as reader:
+            for _label, hostname in hosts:
+                _country, _city, short = country_from_host(hostname)
+                region_by_host[hostname] = vpnbook_region_for_host(
+                    hostname, short, reader
+                )
+    else:
+        for _label, hostname in hosts:
+            slug = hostname.split(".")[0].lower()
+            region_by_host[hostname] = REGION_BY_SLUG.get(slug, "")
+
     servers: list[dict[str, Any]] = []
-    for _label, hostname in parse_vpnbook_hosts(html):
+    for _label, hostname in hosts:
         country, city, short = country_from_host(hostname)
         slug = hostname.split(".")[0]
+        region = region_by_host.get(hostname, "")
         for proto in VPNBOOK_PROTOCOLS:
             config = fetch_vpnbook_ovpn(hostname, proto)
             if not config:
@@ -199,27 +272,169 @@ def build_vpnbook_servers(html: str) -> list[dict[str, Any]]:
                 {
                     "id": stable_id("vpnbook", f"{hostname}:{proto}"),
                     "country": country,
-                    "region": "",
+                    "region": region,
                     "city": city_label,
                     "title": title,
                     "flagUrl": flag_url(short),
                     "config": config,
                     "isPremium": False,
                     "source": "vpnbook",
+                    "protocol": PROTO_TRANSPORT[proto],
                 }
             )
             time.sleep(0.12)
     return servers
 
 
-def _prefer_tcp_config(rows_for_ip: list[dict[str, Any]]) -> dict[str, Any]:
-    tcp = [r for r in rows_for_ip if "proto tcp" in r["config"].lower()]
-    if tcp:
-        return max(tcp, key=lambda r: r["_score"])
-    return max(rows_for_ip, key=lambda r: r["_score"])
+def detect_ovpn_protocol(config: str) -> str:
+    """Return tcp|udp from the active `proto` line (ignore comments)."""
+    for line in config.splitlines():
+        s = line.strip().lower()
+        if not s or s.startswith("#"):
+            continue
+        if s.startswith("proto "):
+            if "udp" in s:
+                return "udp"
+            if "tcp" in s:
+                return "tcp"
+    return "unknown"
+
+
+def gate_city_label(host_name: str, ip: str, protocol: str) -> str:
+    """Human list label — Gate has no real city; use protocol + short id."""
+    proto_label = "TCP" if protocol == "tcp" else "UDP"
+    host = (host_name or "").strip()
+    if host.startswith("public-vpn-"):
+        short = host  # e.g. public-vpn-257
+    else:
+        parts = ip.split(".")
+        # Avoid raw vpn######## hostnames; last two IPv4 octets are stable enough.
+        short = ".".join(parts[-2:]) if len(parts) == 4 else (host[:18] or ip)
+    return f"{proto_label} · {short}"
+
+
+def gate_region(country_short: str, operator: str) -> str:
+    """Fallback region when GeoIP is unavailable or country mismatches."""
+    code = (country_short or "").strip().upper()
+    op = (operator or "").strip()
+    if "_" in op:
+        op = op.split("_", 1)[0].strip()
+    for noise in ("'s owner", "’s owner", " owner"):
+        if op.lower().endswith(noise.strip().lower()):
+            op = op[: -len(noise)].strip()
+            break
+    if len(op) > 40:
+        op = op[:37].rstrip() + "…"
+    if code and op:
+        return f"{code} · {op}"
+    return code or op
+
+
+def dbip_month_candidates(today: date | None = None) -> list[str]:
+    """Current month then previous — DB-IP publishes monthly."""
+    today = today or date.today()
+    months = [today.strftime("%Y-%m")]
+    if today.month == 1:
+        months.append(f"{today.year - 1}-12")
+    else:
+        months.append(f"{today.year:04d}-{today.month - 1:02d}")
+    return months
+
+
+def ensure_dbip_database() -> Path | None:
+    """Download DB-IP City Lite MMDB if missing; return path or None on failure."""
+    if DBIP_MMD_PATH.exists() and DBIP_MMD_PATH.stat().st_size > 1_000_000:
+        return DBIP_MMD_PATH
+
+    DBIP_CACHE_DIR.mkdir(parents=True, exist_ok=True)
+    gz_path = DBIP_MMD_PATH.with_suffix(".mmdb.gz")
+    for month in dbip_month_candidates():
+        url = DBIP_URL.format(month=month)
+        try:
+            print(f"  downloading DB-IP City Lite ({month})…", file=sys.stderr)
+            with SESSION.get(url, timeout=180, stream=True) as resp:
+                resp.raise_for_status()
+                with open(gz_path, "wb") as out:
+                    shutil.copyfileobj(resp.raw, out)
+            if gz_path.stat().st_size < 1_000_000:
+                raise RuntimeError("download too small")
+            with gzip.open(gz_path, "rb") as src, open(DBIP_MMD_PATH, "wb") as dst:
+                shutil.copyfileobj(src, dst)
+            gz_path.unlink(missing_ok=True)
+            print(f"  DB-IP ready ({DBIP_MMD_PATH.stat().st_size // 1_048_576} MiB)", file=sys.stderr)
+            return DBIP_MMD_PATH
+        except (OSError, requests.RequestException, RuntimeError) as exc:
+            print(f"warn: DB-IP fetch failed ({month}): {exc}", file=sys.stderr)
+            gz_path.unlink(missing_ok=True)
+            DBIP_MMD_PATH.unlink(missing_ok=True)
+    return None
+
+
+def lookup_ip_geo(reader: geoip2.database.Reader, ip: str) -> dict[str, str] | None:
+    try:
+        rec = reader.city(ip)
+    except geoip2.errors.AddressNotFoundError:
+        return None
+    region = ""
+    if rec.subdivisions:
+        region = rec.subdivisions.most_specific.name or ""
+    city = rec.city.name if rec.city else ""
+    return {
+        "country_code": (rec.country.iso_code or "").upper(),
+        "country_name": rec.country.name or "",
+        "region": region.strip(),
+        "city": city.strip(),
+    }
+
+
+def parse_gate_message(message: str) -> tuple[str, str]:
+    """Volunteer Message field sometimes names a prefecture/region."""
+    msg = (message or "").strip()
+    if not msg:
+        return "", ""
+    m = re.search(r"Japan_([A-Za-z][A-Za-z\s-]+(?:Prefecture|Pref\.?))", msg, re.I)
+    if m:
+        return m.group(1).strip().rstrip("."), ""
+    m = re.search(r"([A-Za-z][A-Za-z\s-]+ Prefecture)", msg, re.I)
+    if m:
+        return m.group(1).strip(), ""
+    return "", ""
+
+
+def resolve_gate_labels(
+    *,
+    ip: str,
+    country_short: str,
+    operator: str,
+    message: str,
+    host_label: str,
+    protocol: str,
+    geo: dict[str, str] | None,
+) -> tuple[str, str]:
+    """GeoIP-enriched labels when country matches Gate; else protocol · id fallback."""
+    gate_cc = (country_short or "").strip().upper()
+    msg_region, msg_city = parse_gate_message(message)
+    proto_label = "TCP" if protocol == "tcp" else "UDP"
+
+    if (
+        geo
+        and gate_cc
+        and gate_cc != "ZZ"
+        and geo.get("country_code") == gate_cc
+    ):
+        region = msg_region or geo.get("region") or gate_cc
+        city_base = msg_city or geo.get("city") or ""
+        if city_base:
+            city = f"{city_base} · {proto_label}"
+        else:
+            city = gate_city_label(host_label, ip, protocol)
+        return region, city
+
+    return gate_region(country_short, operator), gate_city_label(host_label, ip, protocol)
 
 
 def build_vpngate_servers() -> list[dict[str, Any]]:
+    """All valid Gate relays; keep both TCP and UDP when present."""
     raw = ""
     last_err: Exception | None = None
     for url in VPNGATE_URLS:
@@ -234,7 +449,6 @@ def build_vpngate_servers() -> list[dict[str, Any]]:
             print(f"warn: VPN Gate unavailable: {last_err}", file=sys.stderr)
         return []
 
-    # Strip comment / footer lines; CSV body starts after header row.
     lines = [
         ln
         for ln in raw.splitlines()
@@ -245,7 +459,8 @@ def build_vpngate_servers() -> list[dict[str, Any]]:
         return []
 
     reader = csv.reader(io.StringIO("\n".join(lines)))
-    by_ip: dict[str, list[dict[str, Any]]] = {}
+    # Best row per (ip, protocol): highest Score.
+    best: dict[tuple[str, str], dict[str, Any]] = {}
     for row in reader:
         if len(row) < 15:
             continue
@@ -254,6 +469,8 @@ def build_vpngate_servers() -> list[dict[str, Any]]:
         score_s = row[2]
         country_long = row[5]
         country_short = row[6]
+        operator = row[12] if len(row) > 12 else ""
+        message = row[13] if len(row) > 13 else ""
         b64 = row[14]
         if not b64 or not ip:
             continue
@@ -263,35 +480,100 @@ def build_vpngate_servers() -> list[dict[str, Any]]:
             continue
         if "client" not in config or "remote " not in config:
             continue
+        protocol = detect_ovpn_protocol(config)
+        if protocol not in ("tcp", "udp"):
+            continue
         try:
             score = int(float(score_s))
         except ValueError:
             score = 0
-        entry = {
-            "id": 0,  # set after prefer
+        key = (ip, protocol)
+        prev = best.get(key)
+        if prev is not None and prev["_score"] >= score:
+            continue
+        host_label = host_name or ip
+        best[key] = {
+            "id": 0,
             "country": country_long or "Unknown",
             "region": "",
-            "city": host_name or ip,
-            "title": f"vpngate-{host_name or ip}",
+            "city": "",
+            "title": f"vpngate-{host_label}-{protocol}",
             "flagUrl": flag_url(country_short),
             "config": config,
             "isPremium": False,
             "source": "vpngate",
+            "protocol": protocol,
             "_score": score,
+            "_key": f"{ip}:{host_label}:{protocol}",
             "_ip": ip,
-            "_key": f"{ip}:{host_name}",
+            "_country_short": country_short,
+            "_operator": operator,
+            "_message": message,
+            "_host_label": host_label,
         }
-        by_ip.setdefault(ip, []).append(entry)
 
-    preferred = [_prefer_tcp_config(group) for group in by_ip.values()]
-    preferred.sort(key=lambda r: r["_score"], reverse=True)
+    preferred = sorted(best.values(), key=lambda r: r["_score"], reverse=True)
+    if len(preferred) > VPNGATE_SOFT_MAX:
+        print(
+            f"warn: VPN Gate truncated {len(preferred)} → {VPNGATE_SOFT_MAX}",
+            file=sys.stderr,
+        )
+        preferred = preferred[:VPNGATE_SOFT_MAX]
+
+    geo_by_ip: dict[str, dict[str, str] | None] = {}
+    db_path = ensure_dbip_database()
+    if db_path is not None:
+        unique_ips = {r["_ip"] for r in preferred}
+        with geoip2.database.Reader(str(db_path)) as reader:
+            for ip in unique_ips:
+                geo_by_ip[ip] = lookup_ip_geo(reader, ip)
+        matched = 0
+        for ip in unique_ips:
+            geo = geo_by_ip.get(ip)
+            if not geo:
+                continue
+            gate_cc = next(r["_country_short"] for r in preferred if r["_ip"] == ip).upper()
+            if gate_cc and gate_cc != "ZZ" and geo["country_code"] == gate_cc:
+                matched += 1
+        print(
+            f"  vpngate geo ({DBIP_ATTRIBUTION}): "
+            f"{matched}/{len(unique_ips)} IPs country-matched",
+            file=sys.stderr,
+        )
+    else:
+        print("warn: DB-IP unavailable — Gate labels use protocol · id fallback", file=sys.stderr)
+
     out: list[dict[str, Any]] = []
-    for row in preferred[:VPNGATE_LIMIT]:
+    for row in preferred:
+        ip = row.pop("_ip")
+        country_short = row.pop("_country_short")
+        operator = row.pop("_operator")
+        message = row.pop("_message")
+        host_label = row.pop("_host_label")
+        region, city = resolve_gate_labels(
+            ip=ip,
+            country_short=country_short,
+            operator=operator,
+            message=message,
+            host_label=host_label,
+            protocol=row["protocol"],
+            geo=geo_by_ip.get(ip),
+        )
+        row["region"] = region
+        row["city"] = city
         key = row.pop("_key")
         row.pop("_score", None)
-        row.pop("_ip", None)
         row["id"] = stable_id("vpngate", key)
         out.append(row)
+
+    countries = {r["country"] for r in out}
+    print(
+        f"  vpngate detail: {len(out)} configs "
+        f"({sum(1 for r in out if r['protocol']=='tcp')} tcp / "
+        f"{sum(1 for r in out if r['protocol']=='udp')} udp), "
+        f"{len(countries)} countries",
+        file=sys.stderr,
+    )
     return out
 
 
@@ -330,6 +612,7 @@ def write_outputs(catalog: dict[str, Any]) -> None:
         "updatedAtBd": format_updated_at_bd(updated_at),
         "serverCount": len(catalog["servers"]),
         "sha256": digest,
+        "geoAttribution": DBIP_ATTRIBUTION,
     }
     META_PATH.write_text(json.dumps(meta, indent=2) + "\n", encoding="utf-8")
     print(f"wrote {CATALOG_PATH} ({len(catalog['servers'])} servers, sha256={digest[:12]}…)")

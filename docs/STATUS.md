@@ -16,7 +16,7 @@
 - Navigation: **auto_route**.
 - Theme: light **and** dark; default `ThemeMode.system`; Settings override.
 - Tunnel plugin: **axevpn_flutter** (OpenVPN). Wrap in `TunnelRepository`.
-- MVP servers: **GitHub `fleet/catalog.json`** (vpnbook + curated VPN Gate), served via jsDelivr with raw GitHub fallback. Own WireGuard/fleet hosting is a later project.
+- MVP servers: **GitHub `fleet/catalog.json`** (vpnbook + VPN Gate, TCP+UDP), served via jsDelivr with raw GitHub fallback. Own WireGuard/fleet hosting is a later project.
 - Monetization model (plan): freemium + rewarded minutes + soft paywall + subscriptions. Not a hard lock on first open. **Implementation deferred** until tunnel/product slices below IAP.
 - Forbidden: UXCam, `badCertificateCallback: true`, unused `.ovpn` private keys in the binary, logging destination IPs/DNS/payloads.
 

@@ -183,7 +183,7 @@ class _AllTab extends StatelessWidget {
           child: TextField(
             onChanged: onQueryChanged,
             decoration: const InputDecoration(
-              hintText: 'Search country or city',
+              hintText: 'Search country, city, or region',
               prefixIcon: Icon(Icons.search),
               border: OutlineInputBorder(),
             ),
@@ -301,7 +301,7 @@ class _LocationTile extends StatelessWidget {
               ),
             ),
       title: Text(loc.displayName),
-      subtitle: Text(loc.isPremium ? 'Premium' : 'Free'),
+      subtitle: Text(loc.listSubtitle),
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
