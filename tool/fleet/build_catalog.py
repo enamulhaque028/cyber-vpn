@@ -211,49 +211,53 @@ def fetch_vpnbook_ovpn(hostname: str, protocol: str) -> str | None:
         return None
 
 
-def vpnbook_region_for_host(
+def vpnbook_geo_for_host(
     hostname: str,
     country_short: str,
     reader: geoip2.database.Reader | None,
-) -> str:
-    """Region from DB-IP on resolved hostname IP; static fallback per host slug."""
+) -> tuple[str, float | None, float | None]:
+    """Region + lat/lng from DB-IP on resolved hostname IP; static region fallback."""
     slug = hostname.split(".")[0].lower()
     fallback = REGION_BY_SLUG.get(slug, "")
     if reader is None:
-        return fallback
+        return fallback, None, None
     expected = (country_short or "").upper()
     try:
         ip = socket.gethostbyname(hostname)
     except OSError:
-        return fallback
+        return fallback, None, None
     geo = lookup_ip_geo(reader, ip)
-    if geo and expected and geo.get("country_code") == expected and geo.get("region"):
-        return geo["region"]
-    return fallback
+    if not geo:
+        return fallback, None, None
+    lat = geo.get("lat")
+    lng = geo.get("lng")
+    if expected and geo.get("country_code") == expected and geo.get("region"):
+        return geo["region"], lat, lng
+    return fallback, lat, lng
 
 
 def build_vpnbook_servers(html: str) -> list[dict[str, Any]]:
     """One catalog row per host × protocol (10 hosts × 4 protocols = 40)."""
     hosts = parse_vpnbook_hosts(html)
-    region_by_host: dict[str, str] = {}
+    geo_by_host: dict[str, tuple[str, float | None, float | None]] = {}
     db_path = ensure_dbip_database()
     if db_path is not None:
         with geoip2.database.Reader(str(db_path)) as reader:
             for _label, hostname in hosts:
                 _country, _city, short = country_from_host(hostname)
-                region_by_host[hostname] = vpnbook_region_for_host(
+                geo_by_host[hostname] = vpnbook_geo_for_host(
                     hostname, short, reader
                 )
     else:
         for _label, hostname in hosts:
             slug = hostname.split(".")[0].lower()
-            region_by_host[hostname] = REGION_BY_SLUG.get(slug, "")
+            geo_by_host[hostname] = (REGION_BY_SLUG.get(slug, ""), None, None)
 
     servers: list[dict[str, Any]] = []
     for _label, hostname in hosts:
         country, city, short = country_from_host(hostname)
         slug = hostname.split(".")[0]
-        region = region_by_host.get(hostname, "")
+        region, lat, lng = geo_by_host.get(hostname, ("", None, None))
         for proto in VPNBOOK_PROTOCOLS:
             config = fetch_vpnbook_ovpn(hostname, proto)
             if not config:
@@ -268,20 +272,22 @@ def build_vpnbook_servers(html: str) -> list[dict[str, Any]]:
             city_label = (
                 f"{city} ({slug.upper()}) · {PROTO_CITY_LABEL[proto]}"
             )
-            servers.append(
-                {
-                    "id": stable_id("vpnbook", f"{hostname}:{proto}"),
-                    "country": country,
-                    "region": region,
-                    "city": city_label,
-                    "title": title,
-                    "flagUrl": flag_url(short),
-                    "config": config,
-                    "isPremium": False,
-                    "source": "vpnbook",
-                    "protocol": PROTO_TRANSPORT[proto],
-                }
-            )
+            row: dict[str, Any] = {
+                "id": stable_id("vpnbook", f"{hostname}:{proto}"),
+                "country": country,
+                "region": region,
+                "city": city_label,
+                "title": title,
+                "flagUrl": flag_url(short),
+                "config": config,
+                "isPremium": False,
+                "source": "vpnbook",
+                "protocol": PROTO_TRANSPORT[proto],
+            }
+            if lat is not None and lng is not None:
+                row["lat"] = lat
+                row["lng"] = lng
+            servers.append(row)
             time.sleep(0.12)
     return servers
 
@@ -370,7 +376,7 @@ def ensure_dbip_database() -> Path | None:
     return None
 
 
-def lookup_ip_geo(reader: geoip2.database.Reader, ip: str) -> dict[str, str] | None:
+def lookup_ip_geo(reader: geoip2.database.Reader, ip: str) -> dict[str, Any] | None:
     try:
         rec = reader.city(ip)
     except geoip2.errors.AddressNotFoundError:
@@ -379,12 +385,18 @@ def lookup_ip_geo(reader: geoip2.database.Reader, ip: str) -> dict[str, str] | N
     if rec.subdivisions:
         region = rec.subdivisions.most_specific.name or ""
     city = rec.city.name if rec.city else ""
-    return {
+    lat = rec.location.latitude if rec.location else None
+    lng = rec.location.longitude if rec.location else None
+    out: dict[str, Any] = {
         "country_code": (rec.country.iso_code or "").upper(),
         "country_name": rec.country.name or "",
         "region": region.strip(),
         "city": city.strip(),
     }
+    if lat is not None and lng is not None:
+        out["lat"] = float(lat)
+        out["lng"] = float(lng)
+    return out
 
 
 def parse_gate_message(message: str) -> tuple[str, str]:
@@ -520,7 +532,7 @@ def build_vpngate_servers() -> list[dict[str, Any]]:
         )
         preferred = preferred[:VPNGATE_SOFT_MAX]
 
-    geo_by_ip: dict[str, dict[str, str] | None] = {}
+    geo_by_ip: dict[str, dict[str, Any] | None] = {}
     db_path = ensure_dbip_database()
     if db_path is not None:
         unique_ips = {r["_ip"] for r in preferred}
@@ -561,6 +573,10 @@ def build_vpngate_servers() -> list[dict[str, Any]]:
         )
         row["region"] = region
         row["city"] = city
+        geo = geo_by_ip.get(ip)
+        if geo and geo.get("lat") is not None and geo.get("lng") is not None:
+            row["lat"] = geo["lat"]
+            row["lng"] = geo["lng"]
         key = row.pop("_key")
         row.pop("_score", None)
         row["id"] = stable_id("vpngate", key)

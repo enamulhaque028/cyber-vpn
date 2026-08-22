@@ -1,11 +1,12 @@
 import 'dart:async';
 import 'dart:math';
 
-import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:cyber_vpn/core/config/app_config.dart';
+import 'package:cyber_vpn/core/network/connectivity_bloc.dart';
 import 'package:cyber_vpn/core/utils/traffic_format.dart';
 import 'package:cyber_vpn/features/locations/domain/entities/vpn_location.dart';
 import 'package:cyber_vpn/features/locations/domain/repositories/locations_repository.dart';
+import 'package:cyber_vpn/features/session/data/direct_location_store.dart';
 import 'package:cyber_vpn/features/session/domain/entities/session_record.dart';
 import 'package:cyber_vpn/features/session/domain/network_kind.dart';
 import 'package:cyber_vpn/features/session/domain/repositories/session_history_repository.dart';
@@ -23,10 +24,10 @@ class SessionBloc extends Bloc<SessionEvent, SessionState> {
     this._tunnel,
     this._locations,
     this._prefs,
-    this._history, {
-    Connectivity? connectivity,
-  }) : _connectivity = connectivity ?? Connectivity(),
-       super(
+    this._history,
+    this._connectivityBloc,
+    this._directLocation,
+  ) : super(
          SessionState(
            killSwitchEnabled: _prefs.getBool(AppConfig.prefsKillSwitch) ?? true,
            splitTunnelEnabled:
@@ -53,7 +54,8 @@ class SessionBloc extends Bloc<SessionEvent, SessionState> {
   final LocationsRepository _locations;
   final SharedPreferences _prefs;
   final SessionHistoryRepository _history;
-  final Connectivity _connectivity;
+  final ConnectivityBloc _connectivityBloc;
+  final DirectLocationStore _directLocation;
   bool _initialized = false;
   bool _intended = false;
   /// True while recycling the tunnel for kill-switch / bypass option changes.
@@ -62,7 +64,7 @@ class SessionBloc extends Bloc<SessionEvent, SessionState> {
   int _reconnectAttempts = 0;
   Timer? _connectTimer;
   Timer? _reconnectTimer;
-  StreamSubscription<List<ConnectivityResult>>? _pathSub;
+  StreamSubscription<NetworkKind>? _connectivitySub;
   int? _lastBytesIn;
   int? _lastBytesOut;
   DateTime? _lastBytesAt;
@@ -72,24 +74,11 @@ class SessionBloc extends Bloc<SessionEvent, SessionState> {
   String _sessionLocationName = '';
   int? _sessionLocationId;
 
-  static NetworkKind kindFrom(List<ConnectivityResult> results) {
-    if (results.isEmpty ||
-        (results.length == 1 && results.first == ConnectivityResult.none)) {
-      return NetworkKind.none;
-    }
-    if (results.contains(ConnectivityResult.wifi)) return NetworkKind.wifi;
-    if (results.contains(ConnectivityResult.mobile) ||
-        results.contains(ConnectivityResult.ethernet)) {
-      return NetworkKind.cellular;
-    }
-    return NetworkKind.other;
-  }
-
   @override
   Future<void> close() {
     _connectTimer?.cancel();
     _reconnectTimer?.cancel();
-    _pathSub?.cancel();
+    _connectivitySub?.cancel();
     return super.close();
   }
 
@@ -103,21 +92,20 @@ class SessionBloc extends Bloc<SessionEvent, SessionState> {
     _initialized = true;
   }
 
-  void _listenToPath() {
-    _pathSub ??= _connectivity.onConnectivityChanged.listen((results) {
-      add(SessionEvent.networkPathChanged(kindFrom(results)));
-    });
+  void _listenToConnectivity() {
+    _connectivitySub ??= _connectivityBloc.stream
+        .map((state) => state.kind)
+        .distinct()
+        .listen((kind) {
+          add(SessionEvent.networkPathChanged(kind));
+        });
   }
 
   Future<void> _onStarted(
     SessionStarted event,
     Emitter<SessionState> emit,
   ) async {
-    _listenToPath();
-    try {
-      final path = await _connectivity.checkConnectivity();
-      emit(state.copyWith(networkKind: kindFrom(path)));
-    } catch (_) {}
+    _listenToConnectivity();
     try {
       await _ensureTunnel();
     } catch (e) {
@@ -151,6 +139,15 @@ class SessionBloc extends Bloc<SessionEvent, SessionState> {
     }
 
     emit(state.copyWith(selected: selected, credentials: creds, message: null));
+
+    // First-open Direct location for map arc (lat/lng only). Skip if already cached.
+    unawaited(
+      _directLocation.ensureCaptured(
+        isDirect:
+            state.phase != SessionPhase.protected &&
+            state.phase != SessionPhase.connecting,
+      ),
+    );
   }
 
   Future<void> _onConnect(
@@ -166,15 +163,25 @@ class SessionBloc extends Bloc<SessionEvent, SessionState> {
       return;
     }
 
-    final path = await _connectivity.checkConnectivity();
-    final kind = kindFrom(path);
+    // Already protecting — drop the tunnel first, then connect again.
+    final wasOn =
+        state.phase == SessionPhase.protected ||
+        state.phase == SessionPhase.connecting;
+    if (wasOn) {
+      _connectTimer?.cancel();
+      _reconnectTimer?.cancel();
+      _recyclingTunnel = true;
+      await _tunnel.disconnect();
+      emit(state.copyWith(phase: SessionPhase.idle, reconnecting: false));
+    }
+
+    final kind = await _connectivityBloc.fetchCurrentKind();
     if (kind == NetworkKind.none) {
       _intended = false;
       _connectTimer?.cancel();
       emit(
         state.copyWith(
           phase: SessionPhase.failed,
-          networkKind: kind,
           reconnecting: false,
           message: 'No internet connection. Check Wi‑Fi or mobile data.',
         ),
@@ -373,6 +380,8 @@ class SessionBloc extends Bloc<SessionEvent, SessionState> {
         upRate: '—',
       ),
     );
+    // If first capture was skipped (e.g. opened while Protected), try once on Direct.
+    unawaited(_directLocation.ensureCaptured(isDirect: true));
   }
 
   Future<void> _onServerChosen(
@@ -387,9 +396,7 @@ class SessionBloc extends Bloc<SessionEvent, SessionState> {
       await _tunnel.disconnect();
     }
     emit(state.copyWith(selected: event.location, phase: SessionPhase.idle));
-    if (wasOn) {
-      add(const SessionEvent.connectPressed());
-    }
+    add(const SessionEvent.connectPressed());
   }
 
   Future<void> _onKillSwitchChanged(
@@ -450,7 +457,6 @@ class SessionBloc extends Bloc<SessionEvent, SessionState> {
     SessionNetworkPathChanged event,
     Emitter<SessionState> emit,
   ) {
-    emit(state.copyWith(networkKind: event.kind));
     if (!_intended) return;
     if (state.phase == SessionPhase.protected) return;
     if (state.phase == SessionPhase.connecting) return;

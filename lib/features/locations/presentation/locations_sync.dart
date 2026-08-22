@@ -3,7 +3,7 @@ import 'package:cyber_vpn/features/session/presentation/bloc/session_bloc.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-/// Manual catalog sync (Locations pull-to-refresh + Settings).
+/// Manual catalog sync (Locations app-bar sync + Settings).
 ///
 /// Uses [LocationsEvent.syncRequested] → network only (throws keep old cache).
 /// On success, reseeds [SessionBloc] selected server / credentials.

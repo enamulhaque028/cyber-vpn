@@ -5,6 +5,7 @@ import 'package:cyber_vpn/core/widgets/cl_button.dart';
 import 'package:cyber_vpn/core/widgets/connect_ring.dart';
 import 'package:cyber_vpn/core/widgets/stats_ticker.dart';
 import 'package:cyber_vpn/core/widgets/threat_banner.dart';
+import 'package:cyber_vpn/core/network/connectivity_bloc.dart';
 import 'package:cyber_vpn/features/locations/presentation/bloc/locations_bloc.dart';
 import 'package:cyber_vpn/features/session/presentation/bloc/session_bloc.dart';
 import 'package:flutter/material.dart';
@@ -87,13 +88,17 @@ class _HomePageState extends State<HomePage> {
                   // Scroll only on very short viewports where Spacers cannot fit.
                   final mustScroll = constraints.maxHeight < 520;
 
-                  final banner = BlocBuilder<SessionBloc, SessionState>(
-                    buildWhen: (p, n) =>
-                        p.networkKind != n.networkKind || p.phase != n.phase,
-                    builder: (context, session) {
-                      return ThreatBanner(
-                        kind: session.networkKind,
-                        protected: session.phase == SessionPhase.protected,
+                  final banner = BlocBuilder<ConnectivityBloc, ConnectivityState>(
+                    buildWhen: (p, n) => p.kind != n.kind,
+                    builder: (context, connectivity) {
+                      return BlocBuilder<SessionBloc, SessionState>(
+                        buildWhen: (p, n) => p.phase != n.phase,
+                        builder: (context, session) {
+                          return ThreatBanner(
+                            kind: connectivity.kind,
+                            protected: session.phase == SessionPhase.protected,
+                          );
+                        },
                       );
                     },
                   );
@@ -202,6 +207,13 @@ class _HomePageState extends State<HomePage> {
                       ),
                       const SizedBox(height: 8),
                       ClButton(
+                        label: 'Speed test',
+                        variant: ClButtonVariant.ghost,
+                        onPressed: () =>
+                            context.router.push(const SpeedTestRoute()),
+                      ),
+                      const SizedBox(height: 8),
+                      ClButton(
                         label: 'Go Premium',
                         variant: ClButtonVariant.ghost,
                         onPressed: () =>
@@ -217,10 +229,7 @@ class _HomePageState extends State<HomePage> {
                         children: [
                           banner,
                           const SizedBox(height: 16),
-                          FittedBox(
-                            fit: BoxFit.scaleDown,
-                            child: ring,
-                          ),
+                          FittedBox(fit: BoxFit.scaleDown, child: ring),
                           const SizedBox(height: 12),
                           subtitle,
                           const SizedBox(height: 12),

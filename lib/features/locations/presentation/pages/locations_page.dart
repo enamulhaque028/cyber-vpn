@@ -1,17 +1,31 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:cyber_vpn/app/router.dart';
-import 'package:cyber_vpn/core/widgets/ping_bar.dart';
+import 'package:cyber_vpn/core/theme/app_radii.dart';
 import 'package:cyber_vpn/features/locations/domain/entities/vpn_location.dart';
 import 'package:cyber_vpn/features/locations/presentation/bloc/locations_bloc.dart';
+import 'package:cyber_vpn/features/locations/presentation/locations_list_utils.dart';
 import 'package:cyber_vpn/features/locations/presentation/locations_sync.dart';
+import 'package:cyber_vpn/features/locations/presentation/widgets/location_row.dart';
+import 'package:cyber_vpn/features/locations/presentation/widgets/locations_empty_state.dart';
+import 'package:cyber_vpn/features/locations/presentation/widgets/locations_map_view.dart';
+import 'package:cyber_vpn/features/locations/presentation/widgets/locations_search_field.dart';
 import 'package:cyber_vpn/features/session/presentation/bloc/session_bloc.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+enum _LocationsViewMode { list, map }
+
 @RoutePage()
-class LocationsPage extends StatelessWidget {
+class LocationsPage extends StatefulWidget {
   const LocationsPage({super.key});
+
+  @override
+  State<LocationsPage> createState() => _LocationsPageState();
+}
+
+class _LocationsPageState extends State<LocationsPage> {
+  _LocationsViewMode _viewMode = _LocationsViewMode.list;
 
   void _select(BuildContext context, VpnLocation loc) {
     if (loc.isPremium) {
@@ -25,11 +39,17 @@ class LocationsPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+
     return DefaultTabController(
       length: 3,
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('Locations'),
+          title: const Text(
+            'Locations',
+            style: TextStyle(fontWeight: FontWeight.w700, letterSpacing: -0.3),
+          ),
+          centerTitle: true,
           actions: [
             BlocBuilder<LocationsBloc, LocationsState>(
               buildWhen: (p, n) =>
@@ -43,103 +63,272 @@ class LocationsPage extends StatelessWidget {
                       ? null
                       : () => syncLocationsCatalog(context),
                   icon: syncing
-                      ? const SizedBox(
+                      ? SizedBox(
                           width: 22,
                           height: 22,
-                          child: CircularProgressIndicator(strokeWidth: 2),
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: scheme.primary,
+                          ),
                         )
-                      : const Icon(Icons.sync),
+                      : const Icon(Icons.sync_rounded),
                 );
               },
             ),
           ],
-          bottom: const TabBar(
-            tabs: [
-              Tab(text: 'All'),
-              Tab(text: 'Favorites'),
-              Tab(text: 'Recent'),
+        ),
+        body: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            BlocBuilder<LocationsBloc, LocationsState>(
+              buildWhen: (p, n) =>
+                  (p is LocationsLoaded && p.syncing) !=
+                  (n is LocationsLoaded && n.syncing),
+              builder: (context, state) {
+                final syncing = state is LocationsLoaded && state.syncing;
+                if (!syncing) return const SizedBox.shrink();
+                return LinearProgressIndicator(
+                  minHeight: 2,
+                  color: scheme.primary,
+                  backgroundColor: scheme.outline.withValues(alpha: 0.25),
+                );
+              },
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+              child: Row(
+                children: [
+                  Expanded(child: _LocationsTabBar(scheme: scheme)),
+                  const SizedBox(width: 8),
+                  _ViewModeDropdown(
+                    mode: _viewMode,
+                    onChanged: (mode) => setState(() => _viewMode = mode),
+                  ),
+                ],
+              ),
+            ),
+            Expanded(
+              child: BlocBuilder<LocationsBloc, LocationsState>(
+                builder: (context, state) {
+                  return switch (state) {
+                    LocationsLoading() => const LocationsEmptyState.loading(),
+                    LocationsFailure(:final message) =>
+                      LocationsEmptyState.error(
+                        message: message,
+                        actionLabel: 'Retry sync',
+                        onAction: () => syncLocationsCatalog(context),
+                      ),
+                    LocationsLoaded(
+                      :final all,
+                      :final visible,
+                      :final rttMs,
+                      :final favoriteIds,
+                      :final recentIds,
+                      :final query,
+                    ) =>
+                      BlocBuilder<SessionBloc, SessionState>(
+                        buildWhen: (p, n) => p.selected?.id != n.selected?.id,
+                        builder: (context, session) {
+                          final selectedId = session.selected?.id;
+                          final showMap = _viewMode == _LocationsViewMode.map;
+                          return TabBarView(
+                            physics: showMap
+                                ? const NeverScrollableScrollPhysics()
+                                : null,
+                            children: [
+                              _AllTab(
+                                visible: visible,
+                                query: query,
+                                rttMs: rttMs,
+                                favoriteIds: favoriteIds,
+                                selectedId: selectedId,
+                                showMap: showMap,
+                                onSelect: (loc) => _select(context, loc),
+                                onToggleFavorite: (id) => context
+                                    .read<LocationsBloc>()
+                                    .add(LocationsEvent.favoriteToggled(id)),
+                                onQueryChanged: (q) => context
+                                    .read<LocationsBloc>()
+                                    .add(LocationsEvent.queryChanged(q)),
+                              ),
+                              _FilteredListTab(
+                                icon: Icons.star_outline_rounded,
+                                title: 'No favorites yet',
+                                emptyMessage:
+                                    'Star a location on the All tab to save it here.',
+                                locations: favoriteIds
+                                    .map((id) => _byId(all, id))
+                                    .whereType<VpnLocation>()
+                                    .toList(),
+                                rttMs: rttMs,
+                                favoriteIds: favoriteIds,
+                                selectedId: selectedId,
+                                showMap: showMap,
+                                onSelect: (loc) => _select(context, loc),
+                                onToggleFavorite: (id) => context
+                                    .read<LocationsBloc>()
+                                    .add(LocationsEvent.favoriteToggled(id)),
+                              ),
+                              _FilteredListTab(
+                                icon: Icons.history_rounded,
+                                title: 'No recent locations',
+                                emptyMessage:
+                                    'Locations you pick will show up here.',
+                                locations: recentIds
+                                    .map((id) => _byId(all, id))
+                                    .whereType<VpnLocation>()
+                                    .toList(),
+                                rttMs: rttMs,
+                                favoriteIds: favoriteIds,
+                                selectedId: selectedId,
+                                showMap: showMap,
+                                onSelect: (loc) => _select(context, loc),
+                                onToggleFavorite: (id) => context
+                                    .read<LocationsBloc>()
+                                    .add(LocationsEvent.favoriteToggled(id)),
+                              ),
+                            ],
+                          );
+                        },
+                      ),
+                  };
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ViewModeDropdown extends StatelessWidget {
+  const _ViewModeDropdown({required this.mode, required this.onChanged});
+
+  final _LocationsViewMode mode;
+  final ValueChanged<_LocationsViewMode> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final isMap = mode == _LocationsViewMode.map;
+
+    return PopupMenuButton<_LocationsViewMode>(
+      tooltip: isMap ? 'Map view' : 'List view',
+      initialValue: mode,
+      offset: const Offset(0, 40),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AppRadii.sm),
+      ),
+      onSelected: onChanged,
+      itemBuilder: (context) => [
+        PopupMenuItem(
+          value: _LocationsViewMode.list,
+          child: Row(
+            children: [
+              Icon(
+                Icons.view_list_rounded,
+                size: 20,
+                color: !isMap ? scheme.primary : scheme.onSurface,
+              ),
+              const SizedBox(width: 12),
+              Text(
+                'List',
+                style: TextStyle(
+                  fontWeight: !isMap ? FontWeight.w700 : FontWeight.w500,
+                  color: !isMap ? scheme.primary : null,
+                ),
+              ),
             ],
           ),
         ),
-        body: BlocBuilder<LocationsBloc, LocationsState>(
-          builder: (context, state) {
-            return switch (state) {
-              LocationsLoading() => const Center(
-                child: CircularProgressIndicator(),
+        PopupMenuItem(
+          value: _LocationsViewMode.map,
+          child: Row(
+            children: [
+              Icon(
+                Icons.map_rounded,
+                size: 20,
+                color: isMap ? scheme.primary : scheme.onSurface,
               ),
-              LocationsFailure(:final message) => Center(
-                child: Padding(
-                  padding: const EdgeInsets.all(24),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(message, textAlign: TextAlign.center),
-                      const SizedBox(height: 16),
-                      FilledButton.tonal(
-                        onPressed: () => syncLocationsCatalog(context),
-                        child: const Text('Retry sync'),
-                      ),
-                    ],
-                  ),
+              const SizedBox(width: 12),
+              Text(
+                'Map',
+                style: TextStyle(
+                  fontWeight: isMap ? FontWeight.w700 : FontWeight.w500,
+                  color: isMap ? scheme.primary : null,
                 ),
               ),
-              LocationsLoaded(
-                :final all,
-                :final visible,
-                :final rttMs,
-                :final favoriteIds,
-                :final recentIds,
-                :final syncing,
-              ) =>
-                TabBarView(
-                  children: [
-                    _AllTab(
-                      visible: visible,
-                      rttMs: rttMs,
-                      favoriteIds: favoriteIds,
-                      syncing: syncing,
-                      onSelect: (loc) => _select(context, loc),
-                      onToggleFavorite: (id) => context
-                          .read<LocationsBloc>()
-                          .add(LocationsEvent.favoriteToggled(id)),
-                      onQueryChanged: (q) => context.read<LocationsBloc>().add(
-                        LocationsEvent.queryChanged(q),
-                      ),
-                      onRefresh: () => syncLocationsCatalog(context),
-                    ),
-                    _FilteredListTab(
-                      emptyMessage: 'Star a location to save it here.',
-                      locations: favoriteIds
-                          .map((id) => _byId(all, id))
-                          .whereType<VpnLocation>()
-                          .toList(),
-                      rttMs: rttMs,
-                      favoriteIds: favoriteIds,
-                      onSelect: (loc) => _select(context, loc),
-                      onToggleFavorite: (id) => context
-                          .read<LocationsBloc>()
-                          .add(LocationsEvent.favoriteToggled(id)),
-                      onRefresh: () => syncLocationsCatalog(context),
-                    ),
-                    _FilteredListTab(
-                      emptyMessage: 'Locations you pick will show up here.',
-                      locations: recentIds
-                          .map((id) => _byId(all, id))
-                          .whereType<VpnLocation>()
-                          .toList(),
-                      rttMs: rttMs,
-                      favoriteIds: favoriteIds,
-                      onSelect: (loc) => _select(context, loc),
-                      onToggleFavorite: (id) => context
-                          .read<LocationsBloc>()
-                          .add(LocationsEvent.favoriteToggled(id)),
-                      onRefresh: () => syncLocationsCatalog(context),
-                    ),
-                  ],
-                ),
-            };
-          },
+            ],
+          ),
         ),
+      ],
+      child: Container(
+        height: 44,
+        width: 44,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: scheme.surfaceContainerHighest,
+          borderRadius: BorderRadius.circular(AppRadii.sm),
+          border: Border.all(color: scheme.outline.withValues(alpha: 0.35)),
+        ),
+        child: Icon(
+          isMap ? Icons.map_rounded : Icons.view_list_rounded,
+          size: 22,
+          color: scheme.primary,
+        ),
+      ),
+    );
+  }
+}
+
+class _LocationsTabBar extends StatelessWidget {
+  const _LocationsTabBar({required this.scheme});
+
+  final ColorScheme scheme;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 44,
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: scheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(AppRadii.sm),
+        border: Border.all(color: scheme.outline.withValues(alpha: 0.35)),
+      ),
+      child: TabBar(
+        dividerHeight: 0,
+        isScrollable: false,
+        tabAlignment: TabAlignment.fill,
+        indicatorSize: TabBarIndicatorSize.tab,
+        labelPadding: EdgeInsets.zero,
+        indicator: BoxDecoration(
+          color: scheme.surface,
+          borderRadius: BorderRadius.circular(AppRadii.sm - 4),
+          border: Border.all(color: scheme.outline.withValues(alpha: 0.35)),
+          boxShadow: [
+            BoxShadow(
+              color: scheme.shadow.withValues(alpha: 0.06),
+              blurRadius: 4,
+              offset: const Offset(0, 1),
+            ),
+          ],
+        ),
+        labelStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+        unselectedLabelStyle: const TextStyle(
+          fontWeight: FontWeight.w500,
+          fontSize: 13,
+        ),
+        labelColor: scheme.onSurface,
+        unselectedLabelColor: scheme.secondary,
+        splashFactory: NoSplash.splashFactory,
+        overlayColor: WidgetStateProperty.all(Colors.transparent),
+        tabs: const [
+          Tab(text: 'All'),
+          Tab(text: 'Favorites'),
+          Tab(text: 'Recent'),
+        ],
       ),
     );
   }
@@ -155,56 +344,85 @@ VpnLocation? _byId(List<VpnLocation> all, int id) {
 class _AllTab extends StatelessWidget {
   const _AllTab({
     required this.visible,
+    required this.query,
     required this.rttMs,
     required this.favoriteIds,
-    required this.syncing,
+    required this.selectedId,
+    required this.showMap,
     required this.onSelect,
     required this.onToggleFavorite,
     required this.onQueryChanged,
-    required this.onRefresh,
   });
 
   final List<VpnLocation> visible;
+  final String query;
   final Map<int, int?> rttMs;
   final List<int> favoriteIds;
-  final bool syncing;
+  final int? selectedId;
+  final bool showMap;
   final void Function(VpnLocation) onSelect;
   final void Function(int) onToggleFavorite;
   final void Function(String) onQueryChanged;
-  final Future<void> Function() onRefresh;
 
   @override
   Widget build(BuildContext context) {
+    final searching = query.trim().isNotEmpty;
+
+    if (showMap) {
+      return LocationsMapView(
+        locations: visible,
+        rttMs: rttMs,
+        favoriteIds: favoriteIds,
+        selectedId: selectedId,
+        onSelect: onSelect,
+        onToggleFavorite: onToggleFavorite,
+      );
+    }
+
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        if (syncing) const LinearProgressIndicator(minHeight: 2),
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-          child: TextField(
+          padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
+          child: LocationsSearchField(
+            initialValue: query,
             onChanged: onQueryChanged,
-            decoration: const InputDecoration(
-              hintText: 'Search country, city, or region',
-              prefixIcon: Icon(Icons.search),
-              border: OutlineInputBorder(),
-            ),
           ),
         ),
+        const SizedBox(height: 8),
         Expanded(
-          child: RefreshIndicator(
-            onRefresh: onRefresh,
-            child: ListView.separated(
-              physics: const AlwaysScrollableScrollPhysics(),
-              itemCount: visible.length,
-              separatorBuilder: (_, _) => const Divider(height: 1),
-              itemBuilder: (context, index) => _LocationTile(
-                loc: visible[index],
-                rttMs: rttMs,
-                favorite: favoriteIds.contains(visible[index].id),
-                onSelect: onSelect,
-                onToggleFavorite: onToggleFavorite,
-              ),
-            ),
-          ),
+          child: visible.isEmpty
+              ? ListView(
+                  children: [
+                    SizedBox(
+                      height: MediaQuery.sizeOf(context).height * 0.35,
+                      child: LocationsEmptyState.empty(
+                        icon: Icons.search_off_rounded,
+                        title: 'No matches',
+                        message: searching
+                            ? 'Try another country, city, or region.'
+                            : 'No servers in the catalog.',
+                      ),
+                    ),
+                  ],
+                )
+              : searching
+              ? _FlatLocationList(
+                  locations: sortByPing(visible, rttMs),
+                  rttMs: rttMs,
+                  favoriteIds: favoriteIds,
+                  selectedId: selectedId,
+                  onSelect: onSelect,
+                  onToggleFavorite: onToggleFavorite,
+                )
+              : _GroupedLocationList(
+                  grouped: groupByCountry(visible, rttMs),
+                  rttMs: rttMs,
+                  favoriteIds: favoriteIds,
+                  selectedId: selectedId,
+                  onSelect: onSelect,
+                  onToggleFavorite: onToggleFavorite,
+                ),
         ),
       ],
     );
@@ -213,114 +431,223 @@ class _AllTab extends StatelessWidget {
 
 class _FilteredListTab extends StatelessWidget {
   const _FilteredListTab({
+    required this.icon,
+    required this.title,
     required this.emptyMessage,
     required this.locations,
     required this.rttMs,
     required this.favoriteIds,
+    required this.selectedId,
+    required this.showMap,
     required this.onSelect,
     required this.onToggleFavorite,
-    required this.onRefresh,
   });
 
+  final IconData icon;
+  final String title;
   final String emptyMessage;
   final List<VpnLocation> locations;
   final Map<int, int?> rttMs;
   final List<int> favoriteIds;
+  final int? selectedId;
+  final bool showMap;
   final void Function(VpnLocation) onSelect;
   final void Function(int) onToggleFavorite;
-  final Future<void> Function() onRefresh;
 
   @override
   Widget build(BuildContext context) {
-    return RefreshIndicator(
-      onRefresh: onRefresh,
-      child: locations.isEmpty
-          ? ListView(
-              physics: const AlwaysScrollableScrollPhysics(),
-              children: [
-                SizedBox(
-                  height: MediaQuery.sizeOf(context).height * 0.4,
-                  child: Center(
-                    child: Padding(
-                      padding: const EdgeInsets.all(24),
-                      child: Text(
-                        emptyMessage,
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color: Theme.of(context).colorScheme.secondary,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            )
-          : ListView.separated(
-              physics: const AlwaysScrollableScrollPhysics(),
-              itemCount: locations.length,
-              separatorBuilder: (_, _) => const Divider(height: 1),
-              itemBuilder: (context, index) => _LocationTile(
-                loc: locations[index],
-                rttMs: rttMs,
-                favorite: favoriteIds.contains(locations[index].id),
-                onSelect: onSelect,
-                onToggleFavorite: onToggleFavorite,
-              ),
+    if (locations.isEmpty) {
+      return ListView(
+        padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
+        children: [
+          SizedBox(
+            height: MediaQuery.sizeOf(context).height * 0.4,
+            child: LocationsEmptyState.empty(
+              icon: icon,
+              title: title,
+              message: emptyMessage,
             ),
+          ),
+        ],
+      );
+    }
+
+    if (showMap) {
+      return LocationsMapView(
+        locations: locations,
+        rttMs: rttMs,
+        favoriteIds: favoriteIds,
+        selectedId: selectedId,
+        onSelect: onSelect,
+        onToggleFavorite: onToggleFavorite,
+      );
+    }
+
+    return _FlatLocationList(
+      locations: sortByPing(locations, rttMs),
+      rttMs: rttMs,
+      favoriteIds: favoriteIds,
+      selectedId: selectedId,
+      onSelect: onSelect,
+      onToggleFavorite: onToggleFavorite,
     );
   }
 }
 
-class _LocationTile extends StatelessWidget {
-  const _LocationTile({
-    required this.loc,
+class _FlatLocationList extends StatelessWidget {
+  const _FlatLocationList({
+    required this.locations,
     required this.rttMs,
-    required this.favorite,
+    required this.favoriteIds,
+    required this.selectedId,
     required this.onSelect,
     required this.onToggleFavorite,
   });
 
-  final VpnLocation loc;
+  final List<VpnLocation> locations;
   final Map<int, int?> rttMs;
-  final bool favorite;
+  final List<int> favoriteIds;
+  final int? selectedId;
   final void Function(VpnLocation) onSelect;
   final void Function(int) onToggleFavorite;
 
   @override
   Widget build(BuildContext context) {
-    final probed = rttMs.containsKey(loc.id);
-    return ListTile(
-      leading: loc.flagUrl.isEmpty
-          ? const Icon(Icons.flag_outlined)
-          : ClipOval(
+    return ListView.builder(
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
+      itemCount: locations.length,
+      itemBuilder: (context, index) {
+        final loc = locations[index];
+        return LocationRow(
+          location: loc,
+          rttMs: rttMs,
+          favorite: favoriteIds.contains(loc.id),
+          selected: selectedId == loc.id,
+          onSelect: () => onSelect(loc),
+          onToggleFavorite: () => onToggleFavorite(loc.id),
+        );
+      },
+    );
+  }
+}
+
+class _GroupedLocationList extends StatelessWidget {
+  const _GroupedLocationList({
+    required this.grouped,
+    required this.rttMs,
+    required this.favoriteIds,
+    required this.selectedId,
+    required this.onSelect,
+    required this.onToggleFavorite,
+  });
+
+  final Map<String, List<VpnLocation>> grouped;
+  final Map<int, int?> rttMs;
+  final List<int> favoriteIds;
+  final int? selectedId;
+  final void Function(VpnLocation) onSelect;
+  final void Function(int) onToggleFavorite;
+
+  @override
+  Widget build(BuildContext context) {
+    final entries = <Object>[];
+    for (final country in grouped.keys) {
+      final list = grouped[country]!;
+      entries.add(_CountryHeader(country, list.length, list.first.flagUrl));
+      entries.addAll(list);
+    }
+
+    return ListView.builder(
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
+      itemCount: entries.length,
+      itemBuilder: (context, index) {
+        final entry = entries[index];
+        if (entry is _CountryHeader) {
+          return _CountrySectionHeader(
+            country: entry.country,
+            count: entry.count,
+            flagUrl: entry.flagUrl,
+          );
+        }
+        final loc = entry as VpnLocation;
+        return LocationRow(
+          location: loc,
+          rttMs: rttMs,
+          favorite: favoriteIds.contains(loc.id),
+          selected: selectedId == loc.id,
+          onSelect: () => onSelect(loc),
+          onToggleFavorite: () => onToggleFavorite(loc.id),
+        );
+      },
+    );
+  }
+}
+
+class _CountryHeader {
+  const _CountryHeader(this.country, this.count, this.flagUrl);
+
+  final String country;
+  final int count;
+  final String flagUrl;
+}
+
+class _CountrySectionHeader extends StatelessWidget {
+  const _CountrySectionHeader({
+    required this.country,
+    required this.count,
+    required this.flagUrl,
+  });
+
+  final String country;
+  final int count;
+  final String flagUrl;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 12, bottom: 8),
+      child: Row(
+        children: [
+          if (flagUrl.isNotEmpty)
+            ClipRRect(
+              borderRadius: BorderRadius.circular(4),
               child: CachedNetworkImage(
-                imageUrl: loc.flagUrl,
-                width: 32,
-                height: 32,
+                imageUrl: flagUrl,
+                width: 24,
+                height: 16,
                 fit: BoxFit.cover,
               ),
-            ),
-      title: Text(loc.displayName),
-      subtitle: Text(loc.listSubtitle),
-      trailing: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          IconButton(
-            visualDensity: VisualDensity.compact,
-            onPressed: () => onToggleFavorite(loc.id),
-            icon: Icon(
-              favorite ? Icons.star_rounded : Icons.star_outline_rounded,
-              size: 22,
+            )
+          else
+            Icon(Icons.flag_outlined, size: 18, color: scheme.secondary),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              country,
+              style: Theme.of(
+                context,
+              ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
             ),
           ),
-          PingBar(loading: !probed, milliseconds: rttMs[loc.id]),
-          if (loc.isPremium) ...[
-            const SizedBox(width: 8),
-            const Icon(Icons.lock_outline, size: 18),
-          ],
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+            decoration: BoxDecoration(
+              color: scheme.surfaceContainerHighest,
+              borderRadius: BorderRadius.circular(AppRadii.sm),
+              border: Border.all(color: scheme.outline.withValues(alpha: 0.6)),
+            ),
+            child: Text(
+              '$count',
+              style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                fontWeight: FontWeight.w600,
+                fontFeatures: const [FontFeature.tabularFigures()],
+              ),
+            ),
+          ),
         ],
       ),
-      onTap: () => onSelect(loc),
     );
   }
 }

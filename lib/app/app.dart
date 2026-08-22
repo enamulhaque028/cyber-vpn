@@ -1,6 +1,7 @@
 import 'package:cyber_vpn/app/di.dart';
 import 'package:cyber_vpn/app/router.dart';
 import 'package:cyber_vpn/core/config/app_config.dart';
+import 'package:cyber_vpn/core/network/connectivity_bloc.dart';
 import 'package:cyber_vpn/core/theme/app_theme.dart';
 import 'package:cyber_vpn/features/locations/presentation/bloc/locations_bloc.dart';
 import 'package:cyber_vpn/features/session/presentation/bloc/session_bloc.dart';
@@ -15,6 +16,12 @@ class CyberVpnApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiBlocProvider(
       providers: [
+        BlocProvider(
+          create: (_) =>
+              getIt<ConnectivityBloc>()
+                ..add(const ConnectivityEvent.started()),
+          lazy: false,
+        ),
         BlocProvider(create: (_) => getIt<ThemeCubit>()),
         BlocProvider(
           create: (_) =>
