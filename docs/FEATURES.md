@@ -59,10 +59,10 @@ None of these log destination IPs, DNS queries, or payloads. Ping never shows a 
 
 | Feature | Details |
 |---------|---------|
-| List | Flag, city/country, Free vs Premium. Tabs: **All** / **Favorites** / **Recent**. |
-| All | Flat searchable list (search by country, city, title). Star + ping on each row. |
-| Favorites | Starred IDs only (SharedPreferences). Empty copy if none. |
-| Recent | Last 5 free selections (when you pick a city). Own tab. |
+| List | Flag, city/country, region · protocol · tier subtitle. Card-style rows with ping + favorite. Tabs: **All** / **Favorites** / **Recent**. Current selection highlighted. |
+| All | **Grouped by country** when not searching (section headers with count; servers sorted by ping within country). **Flat list** while search is active. Search field (All tab only). Sync via app bar icon. |
+| Favorites | Starred IDs only (SharedPreferences). Empty state with icon. No search. |
+| Recent | Last 5 free selections (when you pick a city). Empty state with icon. No search. |
 | Premium tap | Opens paywall route (no purchase). |
 | Free tap | Sets selected server, remembers recent, pops back. |
 
@@ -205,7 +205,7 @@ Bypassed apps on public Wi‑Fi are **unprotected by design**.
 | Feature | Details |
 |---------|---------|
 | Protocol | OpenVPN via `axevpn_flutter`, wrapped in `TunnelRepository`. |
-| Servers | GitHub `fleet/catalog.json` via jsDelivr (+ raw GitHub fallback): vpnbook + VPN Gate (all valid, TCP+UDP when present). Each row has `source` + `protocol`. Cache: memory → SharedPreferences → network. Manual sync: Locations pull-to-refresh / sync icon + Settings → Sync server list. Free Gate relays are volatile. |
+| Servers | GitHub `fleet/catalog.json` via jsDelivr (+ raw GitHub fallback): vpnbook + VPN Gate (all valid, TCP+UDP when present). Each row has `source` + `protocol`. Cache: memory → SharedPreferences → network. Manual sync: Locations app-bar sync icon + Settings → Sync server list. Free Gate relays are volatile. |
 | Connect timeout | First miss: refresh list and retry once. Second miss: “try another location.” |
 | Android VPN permission | System VPN consent; `MainActivity` `requestCode` 24. |
 | iOS | Packet Tunnel `VPNExtension`, App Group `group.com.cybervpn.cyberVpn`. |

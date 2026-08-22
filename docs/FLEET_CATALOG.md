@@ -137,7 +137,7 @@ Order inside `HttpLocationsRepository._loadCatalog`: **memory → SharedPreferen
 |---|------|
 | 1 | No memory **and** no valid prefs (first install, cleared app data, bad cache) |
 | 2 | Connect **timeout** while connecting — **once** (`forceRefresh: true` via `SessionBloc` / `didRefreshOnFailure`) |
-| 3 | **Manual sync** — Locations pull-to-refresh / app-bar sync, or Settings → **Sync server list** (`LocationsEvent.syncRequested` → `syncFromNetwork()`). Throws on failure and **keeps** the old cache (unlike timeout refresh, which may fall back silently). |
+| 3 | **Manual sync** — Locations app-bar sync, or Settings → **Sync server list** (`LocationsEvent.syncRequested` → `syncFromNetwork()`). Throws on failure and **keeps** the old cache (unlike timeout refresh, which may fall back silently). |
 
 Splash / `LocationsEvent.started()` uses `forceRefresh: false` (cache-first).
 
