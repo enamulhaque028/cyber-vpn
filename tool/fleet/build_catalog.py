@@ -41,7 +41,9 @@ VPNGATE_URLS = (
     "http://www.vpngate.net/api/iphone/",
     "https://www.vpngate.net/api/iphone/",
 )
-VPNGATE_LIMIT = 40
+# No hard cap: keep every valid Gate relay (TCP + UDP when both exist).
+# Soft safety only if the public list ever explodes in size.
+VPNGATE_SOFT_MAX = 300
 
 COUNTRY_BY_PREFIX = {
     "us": ("USA", "us"),
@@ -78,6 +80,14 @@ PROTO_CITY_LABEL = {
     "tcp443": "TCP 443",
     "udp53": "UDP 53",
     "udp25000": "UDP 25000",
+}
+
+# Normalized transport for catalog `protocol` field.
+PROTO_TRANSPORT = {
+    "tcp80": "tcp",
+    "tcp443": "tcp",
+    "udp53": "udp",
+    "udp25000": "udp",
 }
 
 
@@ -206,20 +216,29 @@ def build_vpnbook_servers(html: str) -> list[dict[str, Any]]:
                     "config": config,
                     "isPremium": False,
                     "source": "vpnbook",
+                    "protocol": PROTO_TRANSPORT[proto],
                 }
             )
             time.sleep(0.12)
     return servers
 
 
-def _prefer_tcp_config(rows_for_ip: list[dict[str, Any]]) -> dict[str, Any]:
-    tcp = [r for r in rows_for_ip if "proto tcp" in r["config"].lower()]
-    if tcp:
-        return max(tcp, key=lambda r: r["_score"])
-    return max(rows_for_ip, key=lambda r: r["_score"])
+def detect_ovpn_protocol(config: str) -> str:
+    """Return tcp|udp from the active `proto` line (ignore comments)."""
+    for line in config.splitlines():
+        s = line.strip().lower()
+        if not s or s.startswith("#"):
+            continue
+        if s.startswith("proto "):
+            if "udp" in s:
+                return "udp"
+            if "tcp" in s:
+                return "tcp"
+    return "unknown"
 
 
 def build_vpngate_servers() -> list[dict[str, Any]]:
+    """All valid Gate relays; keep both TCP and UDP when present."""
     raw = ""
     last_err: Exception | None = None
     for url in VPNGATE_URLS:
@@ -234,7 +253,6 @@ def build_vpngate_servers() -> list[dict[str, Any]]:
             print(f"warn: VPN Gate unavailable: {last_err}", file=sys.stderr)
         return []
 
-    # Strip comment / footer lines; CSV body starts after header row.
     lines = [
         ln
         for ln in raw.splitlines()
@@ -245,7 +263,8 @@ def build_vpngate_servers() -> list[dict[str, Any]]:
         return []
 
     reader = csv.reader(io.StringIO("\n".join(lines)))
-    by_ip: dict[str, list[dict[str, Any]]] = {}
+    # Best row per (ip, protocol): highest Score.
+    best: dict[tuple[str, str], dict[str, Any]] = {}
     for row in reader:
         if len(row) < 15:
             continue
@@ -263,35 +282,57 @@ def build_vpngate_servers() -> list[dict[str, Any]]:
             continue
         if "client" not in config or "remote " not in config:
             continue
+        protocol = detect_ovpn_protocol(config)
+        if protocol not in ("tcp", "udp"):
+            continue
         try:
             score = int(float(score_s))
         except ValueError:
             score = 0
-        entry = {
-            "id": 0,  # set after prefer
+        key = (ip, protocol)
+        prev = best.get(key)
+        if prev is not None and prev["_score"] >= score:
+            continue
+        host_label = host_name or ip
+        proto_label = "TCP" if protocol == "tcp" else "UDP"
+        best[key] = {
+            "id": 0,
             "country": country_long or "Unknown",
             "region": "",
-            "city": host_name or ip,
-            "title": f"vpngate-{host_name or ip}",
+            "city": f"{host_label} · {proto_label}",
+            "title": f"vpngate-{host_label}-{protocol}",
             "flagUrl": flag_url(country_short),
             "config": config,
             "isPremium": False,
             "source": "vpngate",
+            "protocol": protocol,
             "_score": score,
-            "_ip": ip,
-            "_key": f"{ip}:{host_name}",
+            "_key": f"{ip}:{host_label}:{protocol}",
         }
-        by_ip.setdefault(ip, []).append(entry)
 
-    preferred = [_prefer_tcp_config(group) for group in by_ip.values()]
-    preferred.sort(key=lambda r: r["_score"], reverse=True)
+    preferred = sorted(best.values(), key=lambda r: r["_score"], reverse=True)
+    if len(preferred) > VPNGATE_SOFT_MAX:
+        print(
+            f"warn: VPN Gate truncated {len(preferred)} → {VPNGATE_SOFT_MAX}",
+            file=sys.stderr,
+        )
+        preferred = preferred[:VPNGATE_SOFT_MAX]
+
     out: list[dict[str, Any]] = []
-    for row in preferred[:VPNGATE_LIMIT]:
+    for row in preferred:
         key = row.pop("_key")
         row.pop("_score", None)
-        row.pop("_ip", None)
         row["id"] = stable_id("vpngate", key)
         out.append(row)
+
+    countries = {r["country"] for r in out}
+    print(
+        f"  vpngate detail: {len(out)} configs "
+        f"({sum(1 for r in out if r['protocol']=='tcp')} tcp / "
+        f"{sum(1 for r in out if r['protocol']=='udp')} udp), "
+        f"{len(countries)} countries",
+        file=sys.stderr,
+    )
     return out
 
 

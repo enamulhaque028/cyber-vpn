@@ -18,6 +18,8 @@ abstract class VpnLocation with _$VpnLocation {
     required bool isPremium,
     /// Catalog origin: `vpnbook` | `vpngate` (and future sources).
     @Default('') String source,
+    /// Transport: `tcp` | `udp` (empty if unknown).
+    @Default('') String protocol,
   }) = _VpnLocation;
 
   factory VpnLocation.fromJson(Map<String, dynamic> json) =>

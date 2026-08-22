@@ -45,13 +45,16 @@ Single file, one HTTP GET for credentials + servers. Keys match existing Freezed
       "flagUrl": "https://flagcdn.com/w80/us.png",
       "config": "<full .ovpn text>",
       "isPremium": false,
-      "source": "vpnbook"
+      "source": "vpnbook",
+      "protocol": "tcp"
     }
   ]
 }
 ```
 
 - **Stable `id`s:** SHA-256 of `source:key` → 31-bit int (not array index), so favorites/recents survive refreshes.
+- **`source`:** `vpnbook` | `vpngate` (publisher). **`protocol`:** `tcp` | `udp` (transport) — separate fields on purpose.
+- **VPN Gate:** all valid relays from the public CSV (TCP **and** UDP when both exist for an IP); soft max 300. No fixed top-40 cap.
 - **`fleet/catalog.meta.json`:** `{ updatedAt, updatedAtBd, serverCount, sha256 }` for debugging only (app does not read it). `updatedAtBd` is Asia/Dhaka, e.g. `2026-08-21 02:38:12 PM BST`.
 - Catalog is written **pretty-printed** (`indent=2`) for readability in git diffs.
 
@@ -60,7 +63,7 @@ Single file, one HTTP GET for credentials + servers. Keys match existing Freezed
 | Source | Behavior |
 |--------|----------|
 | **vpnbook** | Scrapes `https://www.vpnbook.com/freevpn/openvpn` for hosts + shared user/pass (or env secrets). For **each** of the 10 OpenVPN hosts, downloads all four published protocols via `GET /api/openvpn?hostname=…&protocol=` (`tcp80`, `tcp443`, `udp53`, `udp25000`) → **40** rows (same coverage as the old Supabase `vpn_servers` export). Titles like `US16-TCP443`. |
-| **VPN Gate** | `GET http://www.vpngate.net/api/iphone/` (HTTPS fallback). Decode Base64 configs; skip empty; prefer TCP when both exist; dedupe by IP; sort by Score; keep top **40**. |
+| **VPN Gate** | `GET http://www.vpngate.net/api/iphone/` (HTTPS fallback). Decode Base64 configs; keep **TCP and UDP** when both exist (best Score per IP+protocol); **no top-40 cap** (soft max 300). |
 
 Merge order: **vpnbook first**, then VPN Gate. Job **fails if zero servers** (won’t publish an empty wipe).
 
