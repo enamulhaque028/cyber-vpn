@@ -1,3 +1,4 @@
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:cyber_vpn/app/router.dart';
 import 'package:cyber_vpn/core/config/app_config.dart';
 import 'package:cyber_vpn/features/locations/data/http_locations_repository.dart';
@@ -18,6 +19,9 @@ import 'package:cyber_vpn/features/session/presentation/bloc/exit_check_cubit.da
 import 'package:cyber_vpn/features/session/presentation/bloc/history_cubit.dart';
 import 'package:cyber_vpn/features/session/presentation/bloc/session_bloc.dart';
 import 'package:cyber_vpn/features/settings/presentation/bloc/theme_cubit.dart';
+import 'package:cyber_vpn/features/speed_test/data/https_download_speed_test_repository.dart';
+import 'package:cyber_vpn/features/speed_test/domain/repositories/speed_test_repository.dart';
+import 'package:cyber_vpn/features/speed_test/presentation/bloc/speed_test_cubit.dart';
 import 'package:dio/dio.dart';
 import 'package:get_it/get_it.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -56,9 +60,13 @@ Future<void> configureDependencies() async {
       () => PrefsSessionHistoryRepository(getIt()),
     )
     ..registerLazySingleton<TunnelRepository>(AxeVpnTunnelRepository.new)
+    ..registerLazySingleton<SpeedTestRepository>(
+      HttpsDownloadSpeedTestRepository.new,
+    )
     ..registerFactory(() => ThemeCubit(getIt()))
     ..registerFactory(() => LocationsBloc(getIt(), getIt(), getIt()))
     ..registerFactory(() => ExitCheckCubit(getIt()))
+    ..registerFactory(() => SpeedTestCubit(getIt(), connectivity: Connectivity()))
     ..registerFactory(() => HistoryCubit(getIt()))
     ..registerFactory(
       () => SessionBloc(

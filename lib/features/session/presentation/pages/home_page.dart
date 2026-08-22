@@ -202,6 +202,13 @@ class _HomePageState extends State<HomePage> {
                       ),
                       const SizedBox(height: 8),
                       ClButton(
+                        label: 'Speed test',
+                        variant: ClButtonVariant.ghost,
+                        onPressed: () =>
+                            context.router.push(const SpeedTestRoute()),
+                      ),
+                      const SizedBox(height: 8),
+                      ClButton(
                         label: 'Go Premium',
                         variant: ClButtonVariant.ghost,
                         onPressed: () =>

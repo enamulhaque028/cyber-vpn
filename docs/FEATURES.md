@@ -26,6 +26,7 @@ None of these log destination IPs, DNS queries, or payloads. Ping never shows a 
 | Session bootstrap | Home starts the session from the **current** location list (splash often finishes fetch before Home mounts). |
 | Location row | Shows selected city. Opens Locations. Premium cities are not connectable from here until IAP. |
 | Check connection | Opens Connection screen (HTTPS exit check). Also in app bar info icon. |
+| Speed test | Opens Speed test screen (HTTPS CDN download meter). Also on Home as ghost button. |
 | Go Premium | Opens static paywall (no store). |
 | Reconnect copy | Under the ring while reconnecting after a drop. |
 
@@ -52,6 +53,15 @@ None of these log destination IPs, DNS queries, or payloads. Ping never shows a 
 | What | Uptime (`00:00:00`) plus ↓ / ↑ rates. Dimmed when not protected. |
 | How | OpenVPN status callbacks send duration + byte in/out. `SessionBloc` turns byte **deltas** into rates (`traffic_format.dart`). Widget: `StatsTicker`. |
 | Not | Not a speed test. Not destination traffic. Rates reset on disconnect. |
+
+### Speed test
+
+| | |
+|--|--|
+| What | Interactive download meter (Mbps peak + average). Separate screen from Home. |
+| How | Manual **Start test**. Measures **ping** (HTTPS round-trip), **download**, then **upload** via Cloudflare speed test URLs. `SpeedTestRepository` → `SpeedTestCubit` → gauge + stats card. |
+| Path | When **Protected**, traffic goes through the VPN tunnel automatically. When not protected, measures the direct path. Tap the connection pill for details. |
+| Not | Not the Locations TCP probe. Results are not persisted. Does not log destination URLs. |
 
 ---
 
@@ -246,6 +256,7 @@ Keep enriching the product without becoming a Nord clone. Shipped Tier A items a
 |---------|--------|
 | **Android exclude-list split** | **Shipped** — Settings bypass + `bypassPackages`. See [Split tunnel](#split-tunnel--per-app-vpn). |
 | Home widget | Later. |
+| **Speed test** | **Shipped** — Home → Speed test; ping + download + upload HTTPS CDN meter; tappable connection pill. |
 | Auto best-ping | Later. |
 | In-app review once | After N protects; do not reset on splash. |
 | Protected / dropped notifications | Later. |

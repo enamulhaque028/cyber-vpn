@@ -6,6 +6,7 @@ import 'package:cyber_vpn/features/session/presentation/pages/history_page.dart'
 import 'package:cyber_vpn/features/session/presentation/pages/home_page.dart';
 import 'package:cyber_vpn/features/settings/presentation/pages/bypass_apps_page.dart';
 import 'package:cyber_vpn/features/settings/presentation/pages/settings_pages.dart';
+import 'package:cyber_vpn/features/speed_test/presentation/pages/speed_test_page.dart';
 
 part 'router.gr.dart';
 
@@ -21,6 +22,7 @@ class AppRouter extends RootStackRouter {
     AutoRoute(page: BypassAppsRoute.page),
     AutoRoute(page: PaywallRoute.page),
     AutoRoute(page: ConnectionInfoRoute.page),
+    AutoRoute(page: SpeedTestRoute.page),
     AutoRoute(page: HistoryRoute.page),
   ];
 }
